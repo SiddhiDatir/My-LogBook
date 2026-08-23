@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOGBOOK — Personal Ops</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#12161a;
+    --panel:#1a2027;
+    --panel-2:#20272f;
+    --line:#2c353e;
+    --text:#e9e6dd;
+    --muted:#8b95a1;
+    --teal:#4fb8a6;
+    --amber:#e0a458;
+    --red:#d9765a;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:var(--sans); min-height:100vh;
+  }
+  .shell{ display:flex; min-height:100vh; }
+  nav.rail{
+    width:210px; flex-shrink:0; background:var(--panel);
+    border-right:1px solid var(--line); padding:20px 0; position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{ padding:0 20px 18px 20px; border-bottom:1px solid var(--line); margin-bottom:10px;}
+  .brand .mark{ font-family:var(--mono); font-size:11px; letter-spacing:3px; color:var(--teal); }
+  .brand h1{ font-size:19px; margin:4px 0 0 0; font-weight:700; letter-spacing:-0.3px; }
+  .brand .sub{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .tab{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 20px; cursor:pointer; color:var(--muted);
+    font-size:13.5px; border-left:2px solid transparent;
+    user-select:none;
+  }
+  .tab .n{ font-family:var(--mono); font-size:10px; color:var(--muted); width:16px; }
+  .tab:hover{ color:var(--text); background:var(--panel-2); }
+  .tab.active{ color:var(--text); border-left-color:var(--teal); background:var(--panel-2); font-weight:600; }
+  .tab.active .n{ color:var(--teal); }
+
+  main{ flex:1; padding:26px 34px 60px 34px; max-width:980px; }
+  .view{ display:none; }
+  .view.active{ display:block; animation:fade .2s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  h2.title{ font-size:22px; margin:0 0 3px 0; letter-spacing:-0.3px; }
+  .lede{ color:var(--muted); font-size:13px; margin:0 0 22px 0; }
+
+  .grid{ display:grid; gap:14px; }
+  .grid.cols-2{ grid-template-columns:1fr 1fr; }
+  .grid.cols-3{ grid-template-columns:repeat(3,1fr); }
+  @media(max-width:760px){ .grid.cols-2, .grid.cols-3{ grid-template-columns:1fr; } .shell{flex-direction:column;} nav.rail{width:100%; height:auto; position:relative;} main{padding:20px;} }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px;
+  }
+  .card h3{ font-size:12.5px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 12px 0; font-weight:600;}
+
+  label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 4px 0; }
+  input[type=text], input[type=number], input[type=date], textarea, select{
+    width:100%; background:var(--panel-2); border:1px solid var(--line); color:var(--text);
+    padding:8px 10px; border-radius:6px; font-size:13.5px; font-family:var(--sans);
+  }
+  textarea{ min-height:64px; resize:vertical; }
+  input:focus, textarea:focus, select:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+
+  button{
+    background:var(--teal); color:#0e1a18; border:none; padding:9px 16px; border-radius:6px;
+    font-weight:700; font-size:13px; cursor:pointer; letter-spacing:.2px;
+  }
+  button:hover{ filter:brightness(1.08); }
+  button.ghost{ background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
+  button.ghost:hover{ color:var(--text); border-color:var(--teal); }
+  button.danger{ background:transparent; color:var(--red); border:1px solid var(--red); padding:4px 8px; font-size:11px;}
+
+  .row{ display:flex; gap:8px; align-items:center; }
+  .row > *{ flex:1; }
+  .quicklist{ list-style:none; margin:10px 0 0 0; padding:0; }
+  .quicklist li{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px;
+  }
+  .quicklist li:last-child{ border-bottom:none; }
+  .quicklist li.done span.txt{ text-decoration:line-through; color:var(--muted); }
+  .quicklist input[type=checkbox]{ width:16px; height:16px; accent-color:var(--teal); }
+  .quicklist .txt{ flex:1; }
+  .quicklist .del{ cursor:pointer; color:var(--muted); font-size:12px; }
+  .quicklist .del:hover{ color:var(--red); }
+
+  .ring{
+    width:96px; height:96px; border-radius:50%; margin:0 auto 8px auto;
+    display:flex; align-items:center; justify-content:center; position:relative;
+  }
+  .ring .num{ font-family:var(--mono); font-size:20px; font-weight:700; }
+  .ring .lbl{ position:absolute; bottom:-18px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+  .stat-row{ display:flex; justify-content:space-around; text-align:center; margin-top:26px; }
+
+  .pill{ display:inline-block; padding:2px 9px; border-radius:20px; font-size:10.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; }
+  .pill.work{ background:rgba(79,184,166,.15); color:var(--teal); }
+  .pill.personal{ background:rgba(224,164,88,.15); color:var(--amber); }
+  .pill.active{ background:rgba(79,184,166,.15); color:var(--teal); }
+  .pill.paused{ background:rgba(139,149,161,.15); color:var(--muted); }
+  .pill.done{ background:rgba(79,184,166,.25); color:var(--teal); }
+
+  .proj{ border-bottom:1px solid var(--line); padding:12px 0; }
+  .proj:last-child{ border-bottom:none; }
+  .proj .top{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .proj .name{ font-weight:600; font-size:14px; }
+  .proj .meta{ font-size:12px; color:var(--muted); margin-top:3px; }
+  .proj select{ width:auto; font-size:11px; padding:3px 6px; }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th{ text-align:left; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
+  td{ padding:8px; border-bottom:1px solid var(--line); font-family:var(--mono); }
+  tr:last-child td{ border-bottom:none; }
+
+  .bar-row{ display:flex; align-items:center; gap:8px; margin:5px 0; }
+  .bar-track{ flex:1; height:7px; background:var(--panel-2); border-radius:4px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--teal); }
+  .bar-label{ width:64px; font-size:11px; color:var(--muted); font-family:var(--mono); text-align:right; }
+
+  .goal-cols{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  @media(max-width:900px){ .goal-cols{ grid-template-columns:repeat(2,1fr); } }
+  .goal-col h4{ font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:1px; margin:0 0 8px 0; border-bottom:1px solid var(--line); padding-bottom:6px;}
+
+  .idea{ padding:10px 0; border-bottom:1px solid var(--line); font-size:13.5px; }
+  .idea .ts{ font-family:var(--mono); font-size:10.5px; color:var(--muted); }
+
+  .toast{
+    position:fixed; bottom:18px; right:18px; background:var(--teal); color:#0e1a18;
+    padding:9px 16px; border-radius:6px; font-size:12.5px; font-weight:700;
+    opacity:0; transform:translateY(8px); transition:.25s; pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+
+  .empty{ color:var(--muted); font-size:12.5px; padding:14px 0; }
+  .streak{ font-family:var(--mono); font-size:11px; color:var(--amber); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="brand">
+      <div class="mark">LOGBOOK</div>
+      <h1>Personal Ops</h1>
+      <div class="sub">works offline · saves to this browser</div>
+    </div>
+    <div class="tab active" data-view="snapshot"><span class="n">01</span> Snapshot</div>
+    <div class="tab" data-view="today"><span class="n">02</span> Today</div>
+    <div class="tab" data-view="history"><span class="n">03</span> Log Book</div>
+    <div class="tab" data-view="projects"><span class="n">04</span> Projects</div>
+    <div class="tab" data-view="finance"><span class="n">05</span> Finance</div>
+    <div class="tab" data-view="goals"><span class="n">06</span> Goals & Dreams</div>
+    <div class="tab" data-view="habits"><span class="n">07</span> Habits</div>
+    <div class="tab" data-view="ideas"><span class="n">08</span> Ideas</div>
+  </nav>
+
+  <main>
+
+    <!-- SNAPSHOT -->
+    <div class="view active" id="view-snapshot">
+      <h2 class="title">Snapshot</h2>
+      <p class="lede" id="snapDate">—</p>
+
+      <div class="card" style="margin-bottom:14px;">
+        <h3>Cloud sync — Google Drive</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">
+          Paste your Google Client ID once, connect, and every save here also saves to a private file in your Drive. Open this same hosted page on any device and connect to pull it back down.
+        </p>
+        <div class="row">
+          <input type="text" id="gClientId" placeholder="Google OAuth Client ID">
+          <button style="flex:0 0 auto" onclick="connectDrive()">Connect Drive</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted); margin-top:6px;" id="driveStatus">Not connected — data is only saving locally right now.</div>
+      </div>
+
+      <div class="grid cols-3">
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">Open right now</h3>
+          <div style="font-family:var(--mono); font-size:38px; font-weight:700; color:var(--teal);" id="snapOpenCount">0</div>
+          <div style="font-size:11px; color:var(--muted);" id="snapOpenLabel">tasks waiting</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">Savings this month</h3>
+          <div class="ring" id="snapRing" style="width:76px;height:76px;"><span class="num" id="snapPct" style="font-size:16px;">—</span></div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">Habits at risk</h3>
+          <div style="font-family:var(--mono); font-size:38px; font-weight:700; color:var(--amber);" id="snapHabitRisk">0</div>
+          <div style="font-size:11px; color:var(--muted);">not done today</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Carried forward — didn't get done, not lost</h3>
+        <ul class="quicklist" id="snapCarried"></ul>
+        <div class="empty" id="snapCarriedEmpty" style="display:none;">Nothing carried over — you're caught up.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Next up — closest goals</h3>
+        <ul class="quicklist" id="snapGoals"></ul>
+        <div class="empty" id="snapGoalsEmpty" style="display:none;">No open goals yet — add some in Goals & Dreams.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Gentle daily nudge</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">
+          Requests a one-time-per-day browser notification while this app is open in a tab. It cannot wake your phone or run when the tab is closed — that needs a hosted version or a native app, not a local file.
+        </p>
+        <div class="row">
+          <input type="text" id="reminderTime" placeholder="HH:MM, e.g. 20:00" style="flex:0 0 140px;">
+          <button style="flex:0 0 auto" onclick="enableReminder()">Enable nudge</button>
+          <span id="reminderStatus" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAY -->
+    <div class="view" id="view-today">
+      <h2 class="title">Today</h2>
+      <p class="lede">One pass, ~10 minutes. Log it and close the tab.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Quick tasks — today</h3>
+          <div class="row">
+            <input type="text" id="taskInput" placeholder="Add a task for today...">
+            <button style="flex:0 0 auto" onclick="addTask()">Add</button>
+          </div>
+          <ul class="quicklist" id="taskList"></ul>
+        </div>
+        <div class="card">
+          <h3>Today's numbers</h3>
+          <label>Spent today (₹)</label>
+          <input type="number" id="spendInput" placeholder="0">
+          <label>Saved today (₹)</label>
+          <input type="number" id="saveInput" placeholder="0">
+          <label>Mood / energy (1–5)</label>
+          <input type="number" id="moodInput" min="1" max="5" placeholder="3">
+          <label>Notes — what happened, what you learned, anything on your mind</label>
+          <textarea id="notesInput" placeholder="Free write..."></textarea>
+          <div style="margin-top:12px;"><button onclick="saveToday()">Save today's entry</button></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Habits — today</h3>
+        <ul class="quicklist" id="habitTodayList"></ul>
+        <div class="empty" id="habitTodayEmpty" style="display:none;">No habits yet — add some in the Habits tab.</div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="view" id="view-history">
+      <h2 class="title">Log Book</h2>
+      <p class="lede">Everything you've logged, most recent first.</p>
+      <div class="card">
+        <table id="historyTable">
+          <thead><tr><th>Date</th><th>Spend</th><th>Save</th><th>Mood</th><th>Notes</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div class="empty" id="historyEmpty" style="display:none;">No entries yet. Log today from the Today tab.</div>
+      </div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="view" id="view-projects">
+      <h2 class="title">Projects</h2>
+      <p class="lede">Work and personal, in one place. Status updates as things move.</p>
+      <div class="card">
+        <div class="row" style="margin-bottom:6px;">
+          <input type="text" id="projName" placeholder="Project / area name">
+          <select id="projCat" style="flex:0 0 130px;"><option value="work">Work</option><option value="personal">Personal</option></select>
+          <button style="flex:0 0 auto" onclick="addProject()">Add</button>
+        </div>
+        <div id="projectList"></div>
+        <div class="empty" id="projectEmpty" style="display:none;">No projects yet.</div>
+      </div>
+    </div>
+
+    <!-- FINANCE -->
+    <div class="view" id="view-finance">
+      <h2 class="title">Finance</h2>
+      <p class="lede">Set your baseline, then let daily entries build the picture.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Monthly baseline</h3>
+          <label>Monthly income (₹)</label>
+          <input type="number" id="incomeInput" placeholder="0">
+          <label>Fixed monthly expenses (₹)</label>
+          <input type="number" id="fixedInput" placeholder="0">
+          <label>Savings target (%)</label>
+          <input type="number" id="targetInput" placeholder="20">
+          <div style="margin-top:12px;"><button onclick="saveFinance()">Save baseline</button></div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">This month so far</h3>
+          <div class="ring" id="savingsRing"><span class="num" id="savingsPct">—</span><span class="lbl">saved</span></div>
+          <div class="stat-row">
+            <div><div class="streak" id="mSpend">₹0</div><div style="font-size:10px;color:var(--muted);">spent</div></div>
+            <div><div class="streak" id="mSave">₹0</div><div style="font-size:10px;color:var(--muted);">saved</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h3>Last 14 days — spend vs save</h3>
+        <div id="financeBars"></div>
+        <div class="empty" id="financeEmpty" style="display:none;">Log daily entries to see the trend.</div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="view" id="view-goals">
+      <h2 class="title">Goals & Dreams</h2>
+      <p class="lede">Daily, weekly, yearly, lifelong — every scale in one view.</p>
+      <div class="row" style="margin-bottom:14px;">
+        <input type="text" id="goalInput" placeholder="Add a goal...">
+        <select id="goalTerm" style="flex:0 0 130px;">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="yearly">Yearly</option>
+          <option value="lifelong">Lifelong / Dream</option>
+        </select>
+        <button style="flex:0 0 auto" onclick="addGoal()">Add</button>
+      </div>
+      <div class="goal-cols">
+        <div class="goal-col"><h4>Daily</h4><ul class="quicklist" id="goal-daily"></ul></div>
+        <div class="goal-col"><h4>Weekly</h4><ul class="quicklist" id="goal-weekly"></ul></div>
+        <div class="goal-col"><h4>Yearly</h4><ul class="quicklist" id="goal-yearly"></ul></div>
+        <div class="goal-col"><h4>Lifelong / Dream</h4><ul class="quicklist" id="goal-lifelong"></ul></div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <h3>Achievements — done goals land here</h3>
+        <ul class="quicklist" id="achieveList"></ul>
+        <div class="empty" id="achieveEmpty" style="display:none;">Check off a goal above and it'll show up here.</div>
+      </div>
+    </div>
+
+    <!-- HABITS -->
+    <div class="view" id="view-habits">
+      <h2 class="title">Habits</h2>
+      <p class="lede">Exercise, reading, whatever you're building consistency on.</p>
+      <div class="card">
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="habitInput" placeholder="e.g. Exercise, Read 20 min, Skincare routine">
+          <button style="flex:0 0 auto" onclick="addHabit()">Add</button>
+        </div>
+        <div id="habitList"></div>
+        <div class="empty" id="habitEmpty" style="display:none;">No habits yet.</div>
+      </div>
+    </div>
+
+    <!-- IDEAS -->
+    <div class="view" id="view-ideas">
+      <h2 class="title">Ideas</h2>
+      <p class="lede">Dump it here instead of a sticky note. Sort it out later.</p>
+      <div class="card">
+        <textarea id="ideaInput" placeholder="Whatever just came into your head..."></textarea>
+        <div style="margin-top:10px;"><button onclick="addIdea()">Capture</button></div>
+        <div id="ideaList" style="margin-top:14px;"></div>
+        <div class="empty" id="ideaEmpty" style="display:none;">Nothing captured yet.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<script>
+// ---------- storage ----------
+const STORE_KEY = "lifeos_v1";
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {
+    tasks: [],            // {id, text, done, date}
+    logs: {},             // date -> {spend, save, mood, notes}
+    projects: [
+      {id:1, name:"ADAS benchmarking — Urbania (M2)", cat:"work", status:"active", notes:"Competitor + regulatory mapping vs Sprinter, HiAce"},
+      {id:2, name:"HVAC electronics — Nissan auto HVAC", cat:"work", status:"active", notes:"CAN control logic, compressor, stepper doors, diagnostics"},
+      {id:3, name:"Hardware design learning track", cat:"personal", status:"active", notes:"Personal ramp-up direction"}
+    ],
+    finance: {income:0, fixed:0, target:20},
+    goals: [],             // {id, text, term, done}
+    habits: [],            // {id, name, log:{date:true}}
+    ideas: [],             // {id, text, ts}
+    settings: {reminderTime:null, reminderEnabled:false, lastNotified:null}
+  };
+}
+let DATA = load();
+if(!DATA.settings) DATA.settings = {reminderTime:null, reminderEnabled:false, lastNotified:null};
+let driveSaveTimer=null, tokenClient=null, accessToken=null;
+function persist(){
+  localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+  if(accessToken){ clearTimeout(driveSaveTimer); driveSaveTimer=setTimeout(driveSave, 1200); }
+}
+
+// ---------- Google Drive sync (appDataFolder — private, hidden file, one JSON) ----------
+async function driveEnsureFileId(){
+  let id = localStorage.getItem('lifeos_drive_file_id');
+  if(id) return id;
+  const searchResp = await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27lifeos_data.json%27&fields=files(id,name)", {headers:{Authorization:'Bearer '+accessToken}});
+  const searchData = await searchResp.json();
+  if(searchData.files && searchData.files.length){
+    id = searchData.files[0].id;
+    localStorage.setItem('lifeos_drive_file_id', id);
+    return id;
+  }
+  const createResp = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method:'POST',
+    headers:{Authorization:'Bearer '+accessToken, 'Content-Type':'application/json'},
+    body: JSON.stringify({name:'lifeos_data.json', parents:['appDataFolder']})
+  });
+  const createData = await createResp.json();
+  id = createData.id;
+  localStorage.setItem('lifeos_drive_file_id', id);
+  return id;
+}
+async function driveSave(){
+  if(!accessToken) return;
+  const statusEl = document.getElementById('driveStatus');
+  try{
+    const id = await driveEnsureFileId();
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`, {
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+accessToken, 'Content-Type':'application/json'},
+      body: JSON.stringify(DATA)
+    });
+    if(statusEl) statusEl.textContent = 'Synced ✓ ' + new Date().toLocaleTimeString();
+  }catch(e){ if(statusEl) statusEl.textContent = 'Sync failed — click Connect Drive again'; }
+}
+async function driveLoad(){
+  if(!accessToken) return;
+  try{
+    const id = await driveEnsureFileId();
+    const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {headers:{Authorization:'Bearer '+accessToken}});
+    if(resp.ok){
+      const text = await resp.text();
+      if(text && text.trim().length>2){
+        const remote = JSON.parse(text);
+        if(!remote.settings) remote.settings = {reminderTime:null, reminderEnabled:false, lastNotified:null};
+        DATA = remote;
+        localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+        renderAll(); loadTodayFields(); loadFinanceFields();
+        toast('Loaded from Drive');
+      }
+    }
+  }catch(e){}
+}
+function connectDrive(){
+  const clientId = document.getElementById('gClientId').value.trim();
+  if(!clientId){ toast('Paste your Google Client ID first'); return; }
+  localStorage.setItem('lifeos_gcid', clientId);
+  if(!window.google || !google.accounts){ toast('Google script not loaded — check your internet connection'); return; }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    callback: async (resp)=>{
+      if(resp.error){ toast('Sign-in failed'); return; }
+      accessToken = resp.access_token;
+      document.getElementById('driveStatus').textContent = 'Connected — loading...';
+      await driveLoad();
+      await driveSave();
+      document.getElementById('driveStatus').textContent = 'Connected ✓ syncing';
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1400);
+}
+function uid(){ return Date.now() + Math.floor(Math.random()*1000); }
+
+// ---------- nav ----------
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.view).classList.add('active');
+    renderAll();
+  });
+});
+
+// ---------- TODAY: tasks ----------
+function addTask(){
+  const inp = document.getElementById('taskInput');
+  if(!inp.value.trim()) return;
+  DATA.tasks.push({id:uid(), text:inp.value.trim(), done:false, date:todayStr()});
+  inp.value=''; persist(); renderTasks();
+}
+function toggleTask(id){
+  const t = DATA.tasks.find(x=>x.id===id); if(t){ t.done=!t.done; persist(); renderTasks(); }
+}
+function delTask(id){
+  DATA.tasks = DATA.tasks.filter(x=>x.id!==id); persist(); renderTasks();
+}
+function relevantTasks(){
+  // today's own tasks, plus anything still undone from earlier days — carried forward, never lost
+  const d = todayStr();
+  return DATA.tasks.filter(t=> t.date===d || !t.done);
+}
+function renderTasks(){
+  const list = document.getElementById('taskList');
+  const d = todayStr();
+  const items = relevantTasks();
+  list.innerHTML = items.map(t=>`
+    <li class="${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask(${t.id})">
+      <span class="txt">${escapeHtml(t.text)}</span>
+      ${t.date!==d ? `<span style="font-size:10px;color:var(--amber);font-family:var(--mono);">from ${t.date}</span>` : ''}
+      <span class="del" onclick="delTask(${t.id})">✕</span>
+    </li>`).join('') || '<li class="empty" style="border:none;">No tasks added for today yet.</li>';
+}
+
+// ---------- TODAY: save entry ----------
+function saveToday(){
+  const d = todayStr();
+  DATA.logs[d] = {
+    spend: parseFloat(document.getElementById('spendInput').value)||0,
+    save: parseFloat(document.getElementById('saveInput').value)||0,
+    mood: parseInt(document.getElementById('moodInput').value)||null,
+    notes: document.getElementById('notesInput').value||''
+  };
+  // mark today's habits checked state is handled separately via toggleHabitToday
+  persist();
+  toast('Today logged ✓');
+  renderHistory(); renderFinance();
+}
+function loadTodayFields(){
+  const d = todayStr();
+  const l = DATA.logs[d];
+  if(l){
+    document.getElementById('spendInput').value = l.spend || '';
+    document.getElementById('saveInput').value = l.save || '';
+    document.getElementById('moodInput').value = l.mood || '';
+    document.getElementById('notesInput').value = l.notes || '';
+  }
+}
+
+// ---------- HISTORY ----------
+function renderHistory(){
+  const body = document.getElementById('historyBody');
+  const dates = Object.keys(DATA.logs).sort().reverse();
+  document.getElementById('historyEmpty').style.display = dates.length? 'none':'block';
+  body.innerHTML = dates.map(d=>{
+    const l = DATA.logs[d];
+    return `<tr><td>${d}</td><td>₹${l.spend||0}</td><td>₹${l.save||0}</td><td>${l.mood||'—'}</td><td style="font-family:var(--sans); max-width:340px;">${escapeHtml(l.notes||'')}</td></tr>`;
+  }).join('');
+}
+
+// ---------- PROJECTS ----------
+function addProject(){
+  const name = document.getElementById('projName').value.trim();
+  if(!name) return;
+  DATA.projects.push({id:uid(), name, cat:document.getElementById('projCat').value, status:'active', notes:''});
+  document.getElementById('projName').value='';
+  persist(); renderProjects();
+}
+function updateProjStatus(id, status){
+  const p = DATA.projects.find(x=>x.id===id); if(p){ p.status=status; persist(); renderProjects(); }
+}
+function updateProjNotes(id, notes){
+  const p = DATA.projects.find(x=>x.id===id); if(p){ p.notes=notes; persist(); }
+}
+function delProject(id){
+  DATA.projects = DATA.projects.filter(x=>x.id!==id); persist(); renderProjects();
+}
+function renderProjects(){
+  const el = document.getElementById('projectList');
+  document.getElementById('projectEmpty').style.display = DATA.projects.length? 'none':'block';
+  el.innerHTML = DATA.projects.map(p=>`
+    <div class="proj">
+      <div class="top">
+        <div>
+          <span class="name">${escapeHtml(p.name)}</span>
+          <span class="pill ${p.cat}" style="margin-left:8px;">${p.cat}</span>
+        </div>
+        <div class="row" style="flex:0 0 auto; gap:6px;">
+          <select onchange="updateProjStatus(${p.id}, this.value)">
+            <option value="active" ${p.status==='active'?'selected':''}>Active</option>
+            <option value="paused" ${p.status==='paused'?'selected':''}>Paused</option>
+            <option value="done" ${p.status==='done'?'selected':''}>Done</option>
+          </select>
+          <span class="del" style="cursor:pointer;color:var(--muted);" onclick="delProject(${p.id})">✕</span>
+        </div>
+      </div>
+      <textarea style="margin-top:8px;min-height:38px;" onblur="updateProjNotes(${p.id}, this.value)" placeholder="Notes...">${escapeHtml(p.notes||'')}</textarea>
+    </div>
+  `).join('');
+}
+
+// ---------- FINANCE ----------
+function saveFinance(){
+  DATA.finance = {
+    income: parseFloat(document.getElementById('incomeInput').value)||0,
+    fixed: parseFloat(document.getElementById('fixedInput').value)||0,
+    target: parseFloat(document.getElementById('targetInput').value)||20
+  };
+  persist(); toast('Baseline saved'); renderFinance();
+}
+function loadFinanceFields(){
+  document.getElementById('incomeInput').value = DATA.finance.income||'';
+  document.getElementById('fixedInput').value = DATA.finance.fixed||'';
+  document.getElementById('targetInput').value = DATA.finance.target||20;
+}
+function renderFinance(){
+  const now = new Date();
+  const monthPrefix = now.toISOString().slice(0,7);
+  const monthDates = Object.keys(DATA.logs).filter(d=>d.startsWith(monthPrefix));
+  let spend=0, save=0;
+  monthDates.forEach(d=>{ spend += DATA.logs[d].spend||0; save += DATA.logs[d].save||0; });
+  document.getElementById('mSpend').textContent = '₹'+spend;
+  document.getElementById('mSave').textContent = '₹'+save;
+  const income = DATA.finance.income||0;
+  const pct = income>0 ? Math.round((save/income)*100) : (save>0? 100:0);
+  document.getElementById('savingsPct').textContent = income>0 ? pct+'%' : '—';
+  const ring = document.getElementById('savingsRing');
+  const target = DATA.finance.target||20;
+  const color = pct>=target ? '#4fb8a6' : '#e0a458';
+  ring.style.background = `conic-gradient(${color} ${Math.min(pct,100)}%, #20272f 0)`;
+
+  // last 14 days bars
+  const days = [];
+  for(let i=13;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const maxVal = Math.max(1, ...days.map(d=> Math.max((DATA.logs[d]?.spend||0),(DATA.logs[d]?.save||0)) ));
+  const barsEl = document.getElementById('financeBars');
+  const anyData = days.some(d=>DATA.logs[d]);
+  document.getElementById('financeEmpty').style.display = anyData? 'none':'block';
+  barsEl.innerHTML = days.map(d=>{
+    const l = DATA.logs[d]||{spend:0,save:0};
+    return `<div class="bar-row">
+      <div class="bar-label">${d.slice(5)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(l.spend/maxVal)*100}%; background:var(--red);"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(l.save/maxVal)*100}%; background:var(--teal);"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ---------- GOALS ----------
+function addGoal(){
+  const inp = document.getElementById('goalInput');
+  if(!inp.value.trim()) return;
+  DATA.goals.push({id:uid(), text:inp.value.trim(), term:document.getElementById('goalTerm').value, done:false});
+  inp.value=''; persist(); renderGoals();
+}
+function toggleGoal(id){
+  const g = DATA.goals.find(x=>x.id===id); if(g){ g.done=!g.done; persist(); renderGoals(); }
+}
+function delGoal(id){ DATA.goals = DATA.goals.filter(x=>x.id!==id); persist(); renderGoals(); }
+function renderGoals(){
+  ['daily','weekly','yearly','lifelong'].forEach(term=>{
+    const el = document.getElementById('goal-'+term);
+    const items = DATA.goals.filter(g=>g.term===term && !g.done);
+    el.innerHTML = items.map(g=>`
+      <li>
+        <input type="checkbox" onchange="toggleGoal(${g.id})">
+        <span class="txt">${escapeHtml(g.text)}</span>
+        <span class="del" onclick="delGoal(${g.id})">✕</span>
+      </li>`).join('') || '<li class="empty" style="border:none; padding:4px 0;">—</li>';
+  });
+  const ach = document.getElementById('achieveList');
+  const done = DATA.goals.filter(g=>g.done);
+  document.getElementById('achieveEmpty').style.display = done.length? 'none':'block';
+  ach.innerHTML = done.map(g=>`
+    <li class="done">
+      <span class="pill done">${g.term}</span>
+      <span class="txt">${escapeHtml(g.text)}</span>
+      <span class="del" onclick="delGoal(${g.id})">✕</span>
+    </li>`).join('');
+}
+
+// ---------- HABITS ----------
+function addHabit(){
+  const inp = document.getElementById('habitInput');
+  if(!inp.value.trim()) return;
+  DATA.habits.push({id:uid(), name:inp.value.trim(), log:{}});
+  inp.value=''; persist(); renderHabits();
+}
+function delHabit(id){ DATA.habits = DATA.habits.filter(x=>x.id!==id); persist(); renderHabits(); }
+function toggleHabitToday(id){
+  const h = DATA.habits.find(x=>x.id===id); if(!h) return;
+  const d = todayStr();
+  h.log[d] = !h.log[d];
+  persist(); renderHabits();
+}
+function habitStreak(h){
+  let streak=0;
+  for(let i=0;i<365;i++){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const key = d.toISOString().slice(0,10);
+    if(h.log[key]) streak++; else break;
+  }
+  return streak;
+}
+function renderHabits(){
+  const listEl = document.getElementById('habitList');
+  document.getElementById('habitEmpty').style.display = DATA.habits.length? 'none':'block';
+  listEl.innerHTML = DATA.habits.map(h=>`
+    <div class="proj">
+      <div class="top">
+        <div><span class="name">${escapeHtml(h.name)}</span> <span class="streak">${habitStreak(h)} day streak</span></div>
+        <span class="del" style="cursor:pointer;color:var(--muted);" onclick="delHabit(${h.id})">✕</span>
+      </div>
+    </div>`).join('');
+
+  const todayEl = document.getElementById('habitTodayList');
+  document.getElementById('habitTodayEmpty').style.display = DATA.habits.length? 'none':'block';
+  const d = todayStr();
+  todayEl.innerHTML = DATA.habits.map(h=>`
+    <li class="${h.log[d]?'done':''}">
+      <input type="checkbox" ${h.log[d]?'checked':''} onchange="toggleHabitToday(${h.id})">
+      <span class="txt">${escapeHtml(h.name)}</span>
+      <span class="streak">${habitStreak(h)}d</span>
+    </li>`).join('');
+}
+
+// ---------- IDEAS ----------
+function addIdea(){
+  const inp = document.getElementById('ideaInput');
+  if(!inp.value.trim()) return;
+  DATA.ideas.unshift({id:uid(), text:inp.value.trim(), ts:new Date().toLocaleString()});
+  inp.value=''; persist(); renderIdeas();
+}
+function delIdea(id){ DATA.ideas = DATA.ideas.filter(x=>x.id!==id); persist(); renderIdeas(); }
+function renderIdeas(){
+  const el = document.getElementById('ideaList');
+  document.getElementById('ideaEmpty').style.display = DATA.ideas.length? 'none':'block';
+  el.innerHTML = DATA.ideas.map(i=>`
+    <div class="idea">
+      <div class="ts">${i.ts} <span class="del" style="cursor:pointer; float:right;" onclick="delIdea(${i.id})">✕</span></div>
+      <div>${escapeHtml(i.text)}</div>
+    </div>`).join('');
+}
+
+// ---------- utils ----------
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- SNAPSHOT ----------
+function renderSnapshot(){
+  const d = todayStr();
+  document.getElementById('snapDate').textContent = new Date().toDateString();
+
+  const open = relevantTasks().filter(t=>!t.done);
+  document.getElementById('snapOpenCount').textContent = open.length;
+  document.getElementById('snapOpenLabel').textContent = open.length===1 ? 'task waiting' : 'tasks waiting';
+
+  const carried = open.filter(t=>t.date!==d);
+  document.getElementById('snapCarriedEmpty').style.display = carried.length? 'none':'block';
+  document.getElementById('snapCarried').innerHTML = carried.map(t=>`
+    <li><input type="checkbox" onchange="toggleTask(${t.id})">
+    <span class="txt">${escapeHtml(t.text)}</span>
+    <span style="font-size:10px;color:var(--amber);font-family:var(--mono);">from ${t.date}</span></li>`).join('');
+
+  const atRisk = DATA.habits.filter(h=>!h.log[d]);
+  document.getElementById('snapHabitRisk').textContent = atRisk.length;
+
+  // finance ring, reused pct calc
+  const monthPrefix = new Date().toISOString().slice(0,7);
+  const monthDates = Object.keys(DATA.logs).filter(dt=>dt.startsWith(monthPrefix));
+  let save=0; monthDates.forEach(dt=> save += DATA.logs[dt].save||0);
+  const income = DATA.finance.income||0;
+  const pct = income>0 ? Math.round((save/income)*100) : (save>0?100:0);
+  document.getElementById('snapPct').textContent = income>0 ? pct+'%' : '—';
+  const target = DATA.finance.target||20;
+  document.getElementById('snapRing').style.background = `conic-gradient(${pct>=target?'#4fb8a6':'#e0a458'} ${Math.min(pct,100)}%, #20272f 0)`;
+
+  const openGoals = DATA.goals.filter(g=>!g.done).slice(0,6);
+  document.getElementById('snapGoalsEmpty').style.display = openGoals.length? 'none':'block';
+  document.getElementById('snapGoals').innerHTML = openGoals.map(g=>`
+    <li><span class="pill work" style="background:rgba(139,149,161,.15); color:var(--muted);">${g.term}</span>
+    <span class="txt">${escapeHtml(g.text)}</span></li>`).join('');
+
+  document.getElementById('reminderTime').value = DATA.settings.reminderTime || '';
+  document.getElementById('reminderStatus').textContent = DATA.settings.reminderEnabled
+    ? `on · daily at ${DATA.settings.reminderTime}` : '';
+}
+
+// ---------- reminder (foreground-only, browser Notification API) ----------
+function enableReminder(){
+  const val = document.getElementById('reminderTime').value.trim();
+  if(!/^\d{1,2}:\d{2}$/.test(val)){ toast('Use HH:MM, e.g. 20:00'); return; }
+  if(!('Notification' in window)){ toast('Notifications not supported in this browser'); return; }
+  Notification.requestPermission().then(perm=>{
+    if(perm==='granted'){
+      DATA.settings.reminderTime = val;
+      DATA.settings.reminderEnabled = true;
+      persist();
+      toast('Nudge set for '+val);
+      renderSnapshot();
+    } else {
+      toast('Notification permission was not granted');
+    }
+  });
+}
+function checkReminder(){
+  if(!DATA.settings.reminderEnabled || !DATA.settings.reminderTime) return;
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const d = todayStr();
+  if(hhmm===DATA.settings.reminderTime && DATA.settings.lastNotified!==d){
+    const open = relevantTasks().filter(t=>!t.done).length;
+    if(Notification.permission==='granted'){
+      new Notification('Logbook check-in', {
+        body: open>0 ? `${open} thing(s) still open today.` : 'All clear — take a minute to log today anyway.'
+      });
+    }
+    DATA.settings.lastNotified = d;
+    persist();
+  }
+}
+setInterval(checkReminder, 20000);
+
+function renderAll(){
+  renderSnapshot(); renderTasks(); renderHistory(); renderProjects(); renderFinance(); renderGoals(); renderHabits(); renderIdeas();
+}
+
+// ---------- init ----------
+loadTodayFields();
+loadFinanceFields();
+renderAll();
+const savedClientId = localStorage.getItem('lifeos_gcid');
+if(savedClientId) document.getElementById('gClientId').value = savedClientId;
+</script>
+</body>
+</html>
