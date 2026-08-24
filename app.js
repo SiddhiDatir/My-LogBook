@@ -917,20 +917,35 @@ function quizAnswer(i){
 }
 
 // ---------- flow: vision -> snapshot -> today -> office ----------
-const flowOrder = {vision:'snapshot', snapshot:'today', today:'office'};
+const flowOrder = {
+  vision:'snapshot', snapshot:'today', today:'office', office:'shopping',
+  shopping:'projects', projects:'notes', notes:'finance', finance:'goals',
+  goals:'habits', habits:'play', play:'ideas', ideas:'history', history:'vision'
+};
 function flowAdvance(fromView){
   const next = flowOrder[fromView];
   if(!next) return;
   const nextTab = document.querySelector(`.tab[data-view="${next}"]`);
   if(nextTab) nextTab.click();
-  document.querySelector('main').scrollTo({top:0, behavior:'smooth'});
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function initFlowNext(){
+  document.querySelectorAll('.flow-next[data-flow]').forEach(el=>{
+    const from = el.dataset.flow;
+    const next = flowOrder[from];
+    const nextTab = document.querySelector(`.tab[data-view="${next}"]`);
+    if(nextTab){
+      const label = nextTab.textContent.replace(/^\s*\d+\s*/,'').trim();
+      const span = el.querySelector('span');
+      if(span) span.textContent = label;
+    }
+  });
 }
 let flowScrollLock = false;
-document.querySelector('main').addEventListener('wheel', (e)=>{
+window.addEventListener('wheel', (e)=>{
   const activeView = document.querySelector('.view.active');
   if(!activeView || !flowOrder[activeView.id.replace('view-','')]) return;
-  const nearBottom = (activeView.scrollHeight - window.scrollY - window.innerHeight) < 40 ||
-                      (document.querySelector('main').scrollTop + document.querySelector('main').clientHeight >= document.querySelector('main').scrollHeight - 30);
+  const nearBottom = (document.body.scrollHeight - window.scrollY - window.innerHeight) < 60;
   if(e.deltaY>60 && nearBottom && !flowScrollLock){
     flowScrollLock = true;
     flowAdvance(activeView.id.replace('view-',''));
@@ -954,3 +969,4 @@ if(savedClientId) document.getElementById('gClientId').value = savedClientId;
 if(savedClientId) attemptSilentConnect();
 startMemoryGame();
 startQuiz();
+initFlowNext();

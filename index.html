@@ -132,7 +132,7 @@
           <span id="reminderStatus" style="font-size:12px;color:var(--muted);"></span>
         </div>
       </div>
-      <div class="flow-next" onclick="flowAdvance('snapshot')"><span>Today's tasks</span><div class="flow-arrow">↓</div></div>
+      <div class="flow-next" onclick="flowAdvance('snapshot')" data-flow="snapshot"><span>Today's tasks</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- TODAY -->
@@ -167,7 +167,7 @@
         <ul class="quicklist" id="habitTodayList"></ul>
         <div class="empty" id="habitTodayEmpty" style="display:none;">No habits yet — add some in the Habits tab.</div>
       </div>
-      <div class="flow-next" onclick="flowAdvance('today')"><span>Office log</span><div class="flow-arrow">↓</div></div>
+      <div class="flow-next" onclick="flowAdvance('today')" data-flow="today"><span>Office log</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- OFFICE -->
@@ -192,6 +192,7 @@
         <ul class="quicklist" id="officeList"></ul>
         <div class="empty" id="officeEmpty" style="display:none;">Nothing logged yet today.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('office')" data-flow="office"><span>Shopping</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <div class="view" id="view-shopping">
@@ -218,6 +219,7 @@
           <div id="shopByCat"></div>
         </div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('shopping')" data-flow="shopping"><span>Projects</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- HISTORY -->
@@ -231,6 +233,7 @@
         </table>
         <div class="empty" id="historyEmpty" style="display:none;">No entries yet. Log today from the Today tab.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('history')" data-flow="history"><span>Back to Vision Board</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- PROJECTS -->
@@ -246,6 +249,7 @@
         <div id="projectList"></div>
         <div class="empty" id="projectEmpty" style="display:none;">No projects yet.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('projects')" data-flow="projects"><span>Notes</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- NOTES -->
@@ -254,6 +258,7 @@
       <p class="lede">Everything you've written under each project, gathered for a calm read.</p>
       <div id="notesList"></div>
       <div class="empty" id="notesEmpty" style="display:none;">No project notes yet — add some from the Projects tab.</div>
+      <div class="flow-next" onclick="flowAdvance('notes')" data-flow="notes"><span>Finance</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- FINANCE -->
@@ -285,6 +290,7 @@
         <div id="financeBars"></div>
         <div class="empty" id="financeEmpty" style="display:none;">Log daily entries to see the trend.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('finance')" data-flow="finance"><span>Goals & Dreams</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- GOALS -->
@@ -312,6 +318,7 @@
         <ul class="quicklist" id="achieveList"></ul>
         <div class="empty" id="achieveEmpty" style="display:none;">Check off a goal above and it'll show up here.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('goals')" data-flow="goals"><span>Habits</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- HABITS -->
@@ -326,6 +333,7 @@
         <div id="habitList"></div>
         <div class="empty" id="habitEmpty" style="display:none;">No habits yet.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('habits')" data-flow="habits"><span>Play</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- VISION BOARD -->
@@ -347,7 +355,7 @@
       </div>
       <div class="vision-grid" id="visionGrid"></div>
       <div class="empty" id="visionEmpty" style="display:none;">Board's empty — pin your first thing above.</div>
-      <div class="flow-next" onclick="flowAdvance('vision')"><span>Today's summary</span><div class="flow-arrow">↓</div></div>
+      <div class="flow-next" onclick="flowAdvance('vision')" data-flow="vision"><span>Today's summary</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- PLAY -->
@@ -385,6 +393,7 @@
         <div class="fc-progress" id="quizScore" style="text-align:center;"></div>
         <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startQuiz()">New round</button></div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('play')" data-flow="play"><span>Ideas</span><div class="flow-arrow">↓</div></div>
     </div>
 
     <!-- IDEAS -->
@@ -397,6 +406,7 @@
         <div id="ideaList" style="margin-top:14px;"></div>
         <div class="empty" id="ideaEmpty" style="display:none;">Nothing captured yet.</div>
       </div>
+      <div class="flow-next" onclick="flowAdvance('ideas')" data-flow="ideas"><span>Log Book</span><div class="flow-arrow">↓</div></div>
     </div>
 
   </main>
