@@ -10,7 +10,9 @@
 <body>
 
 <div class="shell">
-  <nav class="rail">
+  <div class="hamburger" id="hamburger" onclick="toggleNav()"><span></span><span></span><span></span></div>
+  <div class="nav-backdrop" id="navBackdrop" onclick="closeNav()"></div>
+  <nav class="rail" id="navRail">
     <div class="brand">
       <div class="mark">LOGBOOK</div>
       <h1>Personal Ops</h1>
@@ -82,6 +84,17 @@
           <h3 style="text-align:left;">Habits at risk</h3>
           <div style="font-family:var(--mono); font-size:38px; font-weight:700; color:var(--amber);" id="snapHabitRisk">0</div>
           <div style="font-size:11px; color:var(--muted);">not done today</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Today — done vs not done</h3>
+        <div class="grid cols-2" style="align-items:center;">
+          <div style="text-align:center;">
+            <div class="ring" id="doneRing" style="width:96px;height:96px; margin:0 auto;"><span class="num" id="doneRingLabel" style="font-size:16px;">0/0</span></div>
+            <div style="font-size:11px;color:var(--muted); margin-top:8px;">tasks completed today</div>
+          </div>
+          <div id="doneLegend" style="font-size:12.5px;"></div>
         </div>
       </div>
 
@@ -401,6 +414,10 @@
       <div class="m-eye l"></div>
       <div class="m-eye r"></div>
       <div class="m-mouth"></div>
+      <div class="m-whisker l1"></div>
+      <div class="m-whisker l2"></div>
+      <div class="m-whisker r1"></div>
+      <div class="m-whisker r2"></div>
     </div>
   </div>
 </div>
