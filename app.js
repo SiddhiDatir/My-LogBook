@@ -177,8 +177,21 @@ document.querySelectorAll('.tab').forEach(tab=>{
     view.classList.add('active');
     renderAll();
     animateTitle(view.querySelector('.title'));
+    closeNav();
   });
 });
+
+// ---------- slide-out drawer ----------
+function toggleNav(){
+  document.getElementById('navRail').classList.toggle('open');
+  document.getElementById('navBackdrop').classList.toggle('show');
+  document.getElementById('hamburger').classList.toggle('open');
+}
+function closeNav(){
+  document.getElementById('navRail').classList.remove('open');
+  document.getElementById('navBackdrop').classList.remove('show');
+  document.getElementById('hamburger').classList.remove('open');
+}
 
 // ---------- letter-by-letter title reveal ----------
 function animateTitle(el){
@@ -541,6 +554,19 @@ function renderSnapshot(){
 
   const open = relevantTasks().filter(t=>!t.done);
   countUpEl(document.getElementById('snapOpenCount'), open.length);
+
+  const allToday = relevantTasks();
+  const doneToday = allToday.filter(t=>t.done).length;
+  const totalToday = allToday.length;
+  const donePct = totalToday>0 ? Math.round((doneToday/totalToday)*100) : 0;
+  const doneRing = document.getElementById('doneRing');
+  if(doneRing) doneRing.style.background = `conic-gradient(var(--teal) ${donePct}%, var(--panel-2) 0)`;
+  const doneLabel = document.getElementById('doneRingLabel');
+  if(doneLabel) doneLabel.textContent = `${doneToday}/${totalToday}`;
+  const legend = document.getElementById('doneLegend');
+  if(legend) legend.innerHTML = `
+    <div style="margin-bottom:6px;"><span style="color:var(--teal);">●</span> Done — ${doneToday}</div>
+    <div><span style="color:var(--muted);">●</span> Not done — ${totalToday-doneToday}</div>`;
   document.getElementById('snapOpenLabel').textContent = open.length===1 ? 'task waiting' : 'tasks waiting';
 
   const carried = open.filter(t=>t.date!==d);
@@ -702,10 +728,13 @@ function renderFlashcards(newlyAdded){
 }
 
 // ---------- MEMORY GAME ----------
-const memoryEmojis = ['🔧','⚡','🚗','📐','🔋','🛠️','📊','🧭'];
+const memoryEmojiPool = ['🔧','⚡','🚗','📐','🔋','🛠️','📊','🧭','🚀','🪐','⭐','🌙','🔭','🧲','💡','🎯','🧪','⚙️','📡','🛰️'];
 let memState = { tiles:[], flipped:[], matched:[], busy:false };
 function startMemoryGame(){
-  const pairs = [...memoryEmojis, ...memoryEmojis];
+  const shuffledPool = [...memoryEmojiPool];
+  for(let i=shuffledPool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffledPool[i],shuffledPool[j]]=[shuffledPool[j],shuffledPool[i]]; }
+  const chosen = shuffledPool.slice(0,8);
+  const pairs = [...chosen, ...chosen];
   for(let i=pairs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pairs[i],pairs[j]]=[pairs[j],pairs[i]]; }
   memState = { tiles:pairs, flipped:[], matched:[], busy:false };
   document.getElementById('memoryStatus').textContent = 'Match the pairs.';
@@ -822,7 +851,31 @@ const quizBank = [
   {q:"Who was the first Prime Minister of India?", opts:["Sardar Patel","Jawaharlal Nehru","Rajendra Prasad","Lal Bahadur Shastri"], a:1},
   {q:"What is the largest organ in the human body?", opts:["Liver","Brain","Skin","Heart"], a:2},
   {q:"Which company originally developed the ARM processor architecture?", opts:["Intel","Acorn Computers","IBM","Texas Instruments"], a:1},
-  {q:"What is the freezing point of water in Fahrenheit?", opts:["0°F","32°F","100°F","212°F"], a:1}
+  {q:"What is the freezing point of water in Fahrenheit?", opts:["0°F","32°F","100°F","212°F"], a:1},
+  {q:"Which Indian city is known as the 'Silicon Valley of India'?", opts:["Hyderabad","Pune","Bengaluru","Chennai"], a:2},
+  {q:"What is the chemical symbol for gold?", opts:["Go","Gd","Au","Ag"], a:2},
+  {q:"Who painted the Mona Lisa?", opts:["Michelangelo","Leonardo da Vinci","Raphael","Donatello"], a:1},
+  {q:"Which is the smallest planet in our solar system?", opts:["Mars","Mercury","Venus","Pluto"], a:1},
+  {q:"What does 'BCM' stand for in automotive electronics?", opts:["Body Control Module","Battery Charge Monitor","Brake Control Mechanism","Base Circuit Map"], a:0},
+  {q:"Which country hosted the 2016 Summer Olympics?", opts:["China","UK","Brazil","Japan"], a:2},
+  {q:"What is the tallest mountain in the world?", opts:["K2","Kangchenjunga","Mount Everest","Lhotse"], a:2},
+  {q:"Who developed the theory of general relativity?", opts:["Isaac Newton","Albert Einstein","Niels Bohr","Galileo Galilei"], a:1},
+  {q:"Which Indian festival is known as the 'festival of lights'?", opts:["Holi","Navratri","Diwali","Eid"], a:2},
+  {q:"What is the national animal of India?", opts:["Lion","Tiger","Elephant","Leopard"], a:1},
+  {q:"Which programming language is primarily used for iOS app development?", opts:["Java","Swift","Kotlin","C#"], a:1},
+  {q:"What does 'TPMS' stand for in vehicles?", opts:["Tire Pressure Monitoring System","Torque Power Management Sensor","Transmission Position Monitor Setting","Total Performance Metrics System"], a:0},
+  {q:"Which is the largest desert in the world?", opts:["Sahara","Gobi","Antarctic","Arabian"], a:2},
+  {q:"Who is known as the 'Father of the Indian Constitution'?", opts:["Mahatma Gandhi","Jawaharlal Nehru","B.R. Ambedkar","Sardar Patel"], a:2},
+  {q:"What is the speed of light approximately?", opts:["3,00,000 km/s","1,50,000 km/s","5,00,000 km/s","1,00,000 km/s"], a:0},
+  {q:"Which ocean is the largest?", opts:["Atlantic","Indian","Arctic","Pacific"], a:3},
+  {q:"What is the powerhouse of the cell called?", opts:["Nucleus","Ribosome","Mitochondria","Golgi body"], a:2},
+  {q:"Which Indian state is the largest producer of tea?", opts:["Kerala","Assam","Tamil Nadu","West Bengal"], a:1},
+  {q:"Who wrote 'Romeo and Juliet'?", opts:["Charles Dickens","William Shakespeare","Jane Austen","Mark Twain"], a:1},
+  {q:"What is the hardest natural substance on Earth?", opts:["Gold","Iron","Diamond","Quartz"], a:2},
+  {q:"Which gas makes up most of Earth's atmosphere?", opts:["Oxygen","Carbon Dioxide","Nitrogen","Hydrogen"], a:2},
+  {q:"What does 'LDWS' stand for in ADAS?", opts:["Lane Departure Warning System","Long Distance Wireless Sensor","Load Detection Warning Signal","Lateral Drive Weight Sensor"], a:0},
+  {q:"Which Indian river is considered the holiest?", opts:["Yamuna","Ganga","Godavari","Narmada"], a:1},
+  {q:"What is the capital of Canada?", opts:["Toronto","Vancouver","Ottawa","Montreal"], a:2}
 ];
 let quizOrder = [], quizIndex = 0, quizScore = 0, quizAnswered = false;
 function startQuiz(){
