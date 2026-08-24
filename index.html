@@ -142,6 +142,74 @@
 
   .empty{ color:var(--muted); font-size:12.5px; padding:14px 0; }
   .streak{ font-family:var(--mono); font-size:11px; color:var(--amber); }
+
+  /* ---------- ambience: soft drifting blobs behind everything ---------- */
+  body::before, body::after{
+    content:""; position:fixed; z-index:0; border-radius:50%; filter:blur(70px); opacity:.14; pointer-events:none;
+  }
+  body::before{
+    width:420px; height:420px; background:var(--teal); top:-120px; left:-100px;
+    animation: drift1 22s ease-in-out infinite alternate;
+  }
+  body::after{
+    width:380px; height:380px; background:var(--coral); bottom:-140px; right:-100px;
+    animation: drift2 26s ease-in-out infinite alternate;
+  }
+  @keyframes drift1{ from{ transform:translate(0,0); } to{ transform:translate(60px,50px); } }
+  @keyframes drift2{ from{ transform:translate(0,0); } to{ transform:translate(-50px,-40px); } }
+  .shell, nav.rail, main{ position:relative; z-index:1; }
+
+  :root{ --coral:#e08a63; --plum:#9b7fb0; }
+
+  .card{ transition:transform .18s ease, border-color .18s ease; }
+  .card:hover{ transform:translateY(-2px); border-color:#3a4650; }
+
+  /* ---------- shopping ---------- */
+  .cat-block{ margin-bottom:14px; }
+  .cat-block h4{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin:0 0 6px 0; }
+
+  /* ---------- vision board — pinterest-ish masonry ---------- */
+  .vision-grid{ column-count:3; column-gap:14px; }
+  @media(max-width:760px){ .vision-grid{ column-count:1; } }
+  @media(min-width:761px) and (max-width:1000px){ .vision-grid{ column-count:2; } }
+  .vision-card{
+    break-inside:avoid; margin-bottom:14px; border-radius:12px; overflow:hidden;
+    background:var(--panel); border:1px solid var(--line);
+    transition:transform .2s ease, box-shadow .2s ease;
+    animation: popIn .35s ease both;
+  }
+  .vision-card:hover{ transform:translateY(-5px) rotate(-0.3deg); box-shadow:0 14px 28px rgba(0,0,0,.35); }
+  .vision-card img{ width:100%; display:block; }
+  .vision-card .vc-text{ padding:16px; font-size:14px; line-height:1.45; font-weight:600; }
+  .vision-card .vc-del{ display:flex; justify-content:flex-end; padding:0 10px 8px 0; }
+  .vision-card .vc-del span{ cursor:pointer; color:var(--muted); font-size:11px; }
+  .vision-card .vc-del span:hover{ color:var(--red); }
+  @keyframes popIn{ from{ opacity:0; transform:translateY(10px) scale(.97); } to{ opacity:1; transform:translateY(0) scale(1); } }
+
+  /* ---------- flashcards ---------- */
+  .fc-card{
+    max-width:420px; margin:0 auto; min-height:130px; border-radius:12px;
+    background:linear-gradient(135deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+    padding:22px; font-size:17px; font-weight:600; cursor:pointer; user-select:none;
+    transition:transform .35s; transform-style:preserve-3d;
+  }
+  .fc-card.flipped{ background:linear-gradient(135deg, rgba(79,184,166,.18), var(--panel-2)); }
+  .fc-progress{ font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:10px; }
+
+  /* ---------- memory game ---------- */
+  .memory-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-width:360px; }
+  .mem-tile{
+    aspect-ratio:1; border-radius:8px; background:var(--panel-2); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer;
+    transition:transform .2s;
+  }
+  .mem-tile.flipped, .mem-tile.matched{ background:rgba(79,184,166,.15); border-color:var(--teal); transform:scale(1.03); }
+  .mem-tile.matched{ opacity:.55; cursor:default; }
+
+  /* number count-up feel on snapshot */
+  #snapOpenCount, #snapHabitRisk{ transition:color .3s; }
+
 </style>
 </head>
 <body>
@@ -155,12 +223,15 @@
     </div>
     <div class="tab active" data-view="snapshot"><span class="n">01</span> Snapshot</div>
     <div class="tab" data-view="today"><span class="n">02</span> Today</div>
-    <div class="tab" data-view="history"><span class="n">03</span> Log Book</div>
-    <div class="tab" data-view="projects"><span class="n">04</span> Projects</div>
-    <div class="tab" data-view="finance"><span class="n">05</span> Finance</div>
-    <div class="tab" data-view="goals"><span class="n">06</span> Goals & Dreams</div>
-    <div class="tab" data-view="habits"><span class="n">07</span> Habits</div>
-    <div class="tab" data-view="ideas"><span class="n">08</span> Ideas</div>
+    <div class="tab" data-view="shopping"><span class="n">03</span> Shopping</div>
+    <div class="tab" data-view="history"><span class="n">04</span> Log Book</div>
+    <div class="tab" data-view="projects"><span class="n">05</span> Projects</div>
+    <div class="tab" data-view="finance"><span class="n">06</span> Finance</div>
+    <div class="tab" data-view="goals"><span class="n">07</span> Goals & Dreams</div>
+    <div class="tab" data-view="habits"><span class="n">08</span> Habits</div>
+    <div class="tab" data-view="vision"><span class="n">09</span> Vision Board</div>
+    <div class="tab" data-view="play"><span class="n">10</span> Play</div>
+    <div class="tab" data-view="ideas"><span class="n">11</span> Ideas</div>
   </nav>
 
   <main>
@@ -255,6 +326,33 @@
         <h3>Habits — today</h3>
         <ul class="quicklist" id="habitTodayList"></ul>
         <div class="empty" id="habitTodayEmpty" style="display:none;">No habits yet — add some in the Habits tab.</div>
+      </div>
+    </div>
+
+    <!-- SHOPPING -->
+    <div class="view" id="view-shopping">
+      <h2 class="title">Shopping</h2>
+      <p class="lede">Groceries, household, clothes — whatever's on the list before you head out.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="row" style="margin-bottom:6px;">
+            <input type="text" id="shopInput" placeholder="e.g. Onions, detergent, socks...">
+            <select id="shopCat" style="flex:0 0 130px;">
+              <option value="Groceries">Groceries</option>
+              <option value="Household">Household</option>
+              <option value="Clothes">Clothes</option>
+              <option value="Other">Other</option>
+            </select>
+            <button style="flex:0 0 auto" onclick="addShopItem()">Add</button>
+          </div>
+          <ul class="quicklist" id="shopList"></ul>
+          <div class="empty" id="shopEmpty" style="display:none;">Nothing on the list right now.</div>
+          <div style="margin-top:10px;"><button class="ghost" onclick="clearCheckedShop()">Clear checked</button></div>
+        </div>
+        <div class="card">
+          <h3>By category</h3>
+          <div id="shopByCat"></div>
+        </div>
       </div>
     </div>
 
@@ -358,6 +456,57 @@
       </div>
     </div>
 
+    <!-- VISION BOARD -->
+    <div class="view" id="view-vision">
+      <h2 class="title">Vision Board</h2>
+      <p class="lede">Pin what you're working toward. Words, images, whatever pulls you forward.</p>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="grid cols-2">
+          <div>
+            <label>Text / quote / goal</label>
+            <input type="text" id="visionText" placeholder="e.g. Own place by 30, or a quote that hits">
+          </div>
+          <div>
+            <label>Image URL (optional)</label>
+            <input type="text" id="visionImg" placeholder="https://... (leave blank for a text card)">
+          </div>
+        </div>
+        <div style="margin-top:10px;"><button onclick="addVisionItem()">Pin it</button></div>
+      </div>
+      <div class="vision-grid" id="visionGrid"></div>
+      <div class="empty" id="visionEmpty" style="display:none;">Board's empty — pin your first thing above.</div>
+    </div>
+
+    <!-- PLAY -->
+    <div class="view" id="view-play">
+      <h2 class="title">Play</h2>
+      <p class="lede">A break, or a way to actually retain what you're learning.</p>
+
+      <div class="card" style="margin-bottom:14px;">
+        <h3>Flashcards — quiz yourself on whatever you're learning</h3>
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="fcQ" placeholder="Question / term">
+          <input type="text" id="fcA" placeholder="Answer">
+          <button style="flex:0 0 auto" onclick="addFlashcard()">Add</button>
+        </div>
+        <div id="fcStage" style="text-align:center; padding:24px 10px;">
+          <div class="empty" id="fcEmptyMsg">Add a few cards above to start quizzing yourself.</div>
+        </div>
+        <div class="row" id="fcControls" style="display:none; justify-content:center;">
+          <button class="ghost" style="flex:0 0 auto" onclick="fcFlip()">Flip</button>
+          <button class="ghost" style="flex:0 0 auto" onclick="fcNext()">Next card</button>
+          <button class="ghost" style="flex:0 0 auto" onclick="fcShuffle()">Shuffle</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Memory match — 2 minute reset</h3>
+        <div id="memoryStatus" style="font-size:12px;color:var(--muted); margin-bottom:10px;">Match the pairs.</div>
+        <div class="memory-grid" id="memoryGrid"></div>
+        <div style="margin-top:12px;"><button class="ghost" onclick="startMemoryGame()">New game</button></div>
+      </div>
+    </div>
+
     <!-- IDEAS -->
     <div class="view" id="view-ideas">
       <h2 class="title">Ideas</h2>
@@ -395,11 +544,17 @@ function load(){
     goals: [],             // {id, text, term, done}
     habits: [],            // {id, name, log:{date:true}}
     ideas: [],             // {id, text, ts}
+    shopping: [],          // {id, text, cat, done}
+    vision: [],            // {id, text, img}
+    flashcards: [],        // {id, q, a}
     settings: {reminderTime:null, reminderEnabled:false, lastNotified:null}
   };
 }
 let DATA = load();
 if(!DATA.settings) DATA.settings = {reminderTime:null, reminderEnabled:false, lastNotified:null};
+if(!DATA.shopping) DATA.shopping = [];
+if(!DATA.vision) DATA.vision = [];
+if(!DATA.flashcards) DATA.flashcards = [];
 let driveSaveTimer=null, tokenClient=null, accessToken=null;
 function persist(){
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
@@ -450,6 +605,9 @@ async function driveLoad(){
       if(text && text.trim().length>2){
         const remote = JSON.parse(text);
         if(!remote.settings) remote.settings = {reminderTime:null, reminderEnabled:false, lastNotified:null};
+        if(!remote.shopping) remote.shopping = [];
+        if(!remote.vision) remote.vision = [];
+        if(!remote.flashcards) remote.flashcards = [];
         DATA = remote;
         localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
         renderAll(); loadTodayFields(); loadFinanceFields();
@@ -472,11 +630,35 @@ function connectDrive(){
       document.getElementById('driveStatus').textContent = 'Connected — loading...';
       await driveLoad();
       await driveSave();
-      document.getElementById('driveStatus').textContent = 'Connected ✓ syncing';
+      document.getElementById('driveStatus').textContent = 'Connected ✓ auto-syncing';
     }
   });
   tokenClient.requestAccessToken();
 }
+function attemptSilentConnect(){
+  const clientId = localStorage.getItem('lifeos_gcid');
+  if(!clientId) return;
+  if(!window.google || !google.accounts){ setTimeout(attemptSilentConnect, 600); return; }
+  const statusEl = document.getElementById('driveStatus');
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    callback: async (resp)=>{
+      if(resp.error){
+        if(statusEl) statusEl.textContent = 'Not connected — tap Connect Drive once';
+        return;
+      }
+      accessToken = resp.access_token;
+      if(statusEl) statusEl.textContent = 'Connected — loading...';
+      await driveLoad();
+      if(statusEl) statusEl.textContent = 'Connected ✓ auto-syncing';
+    }
+  });
+  tokenClient.requestAccessToken({prompt:''});
+}
+setInterval(()=>{
+  if(accessToken && !driveSaveTimer){ driveLoad(); }
+}, 45000);
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function toast(msg){
   const t = document.getElementById('toast');
@@ -830,8 +1012,137 @@ function checkReminder(){
 }
 setInterval(checkReminder, 20000);
 
+// ---------- SHOPPING ----------
+function addShopItem(){
+  const inp = document.getElementById('shopInput');
+  if(!inp.value.trim()) return;
+  DATA.shopping.push({id:uid(), text:inp.value.trim(), cat:document.getElementById('shopCat').value, done:false});
+  inp.value=''; persist(); renderShopping();
+}
+function toggleShop(id){ const s=DATA.shopping.find(x=>x.id===id); if(s){ s.done=!s.done; persist(); renderShopping(); } }
+function delShop(id){ DATA.shopping = DATA.shopping.filter(x=>x.id!==id); persist(); renderShopping(); }
+function clearCheckedShop(){ DATA.shopping = DATA.shopping.filter(x=>!x.done); persist(); renderShopping(); }
+function renderShopping(){
+  const list = document.getElementById('shopList');
+  document.getElementById('shopEmpty').style.display = DATA.shopping.length? 'none':'block';
+  list.innerHTML = DATA.shopping.map(s=>`
+    <li class="${s.done?'done':''}">
+      <input type="checkbox" ${s.done?'checked':''} onchange="toggleShop(${s.id})">
+      <span class="txt">${escapeHtml(s.text)}</span>
+      <span style="font-size:10px;color:var(--muted);font-family:var(--mono);">${s.cat}</span>
+      <span class="del" onclick="delShop(${s.id})">✕</span>
+    </li>`).join('');
+  const cats = ['Groceries','Household','Clothes','Other'];
+  const byCat = document.getElementById('shopByCat');
+  byCat.innerHTML = cats.map(c=>{
+    const items = DATA.shopping.filter(s=>s.cat===c && !s.done);
+    if(!items.length) return '';
+    return `<div class="cat-block"><h4>${c} (${items.length})</h4>
+      <div style="font-size:13px; color:var(--text);">${items.map(i=>escapeHtml(i.text)).join(' · ')}</div></div>`;
+  }).join('') || '<div class="empty">Nothing pending.</div>';
+}
+
+// ---------- VISION BOARD ----------
+const visionColors = ['linear-gradient(135deg, rgba(79,184,166,.22), rgba(79,184,166,.05))',
+  'linear-gradient(135deg, rgba(224,164,88,.22), rgba(224,164,88,.05))',
+  'linear-gradient(135deg, rgba(224,138,99,.22), rgba(224,138,99,.05))',
+  'linear-gradient(135deg, rgba(155,127,176,.22), rgba(155,127,176,.05))'];
+function addVisionItem(){
+  const text = document.getElementById('visionText').value.trim();
+  const img = document.getElementById('visionImg').value.trim();
+  if(!text && !img) return;
+  DATA.vision.push({id:uid(), text, img});
+  document.getElementById('visionText').value=''; document.getElementById('visionImg').value='';
+  persist(); renderVision();
+}
+function delVision(id){ DATA.vision = DATA.vision.filter(x=>x.id!==id); persist(); renderVision(); }
+function renderVision(){
+  const grid = document.getElementById('visionGrid');
+  document.getElementById('visionEmpty').style.display = DATA.vision.length? 'none':'block';
+  grid.innerHTML = DATA.vision.map((v,i)=>`
+    <div class="vision-card" style="${v.img?'':'background:'+visionColors[i%visionColors.length]+';'}">
+      ${v.img? `<img src="${escapeHtml(v.img)}" onerror="this.style.display='none'">` : ''}
+      ${v.text? `<div class="vc-text">${escapeHtml(v.text)}</div>` : ''}
+      <div class="vc-del"><span onclick="delVision(${v.id})">remove</span></div>
+    </div>`).join('');
+}
+
+// ---------- FLASHCARDS ----------
+let fcOrder = [], fcIndex = 0, fcFlippedState = false;
+function addFlashcard(){
+  const q = document.getElementById('fcQ').value.trim();
+  const a = document.getElementById('fcA').value.trim();
+  if(!q || !a) return;
+  DATA.flashcards.push({id:uid(), q, a});
+  document.getElementById('fcQ').value=''; document.getElementById('fcA').value='';
+  persist(); renderFlashcards(true);
+}
+function fcShuffle(){
+  fcOrder = DATA.flashcards.map(c=>c.id);
+  for(let i=fcOrder.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [fcOrder[i],fcOrder[j]]=[fcOrder[j],fcOrder[i]]; }
+  fcIndex = 0; fcFlippedState = false; renderFcStage();
+}
+function fcNext(){ fcIndex = (fcIndex+1) % fcOrder.length; fcFlippedState = false; renderFcStage(); }
+function fcFlip(){ fcFlippedState = !fcFlippedState; renderFcStage(); }
+function renderFcStage(){
+  const stage = document.getElementById('fcStage');
+  const controls = document.getElementById('fcControls');
+  if(!DATA.flashcards.length){
+    stage.innerHTML = '<div class="empty" id="fcEmptyMsg">Add a few cards above to start quizzing yourself.</div>';
+    controls.style.display = 'none'; return;
+  }
+  controls.style.display = 'flex';
+  const card = DATA.flashcards.find(c=>c.id===fcOrder[fcIndex]) || DATA.flashcards[0];
+  stage.innerHTML = `
+    <div class="fc-card ${fcFlippedState?'flipped':''}" onclick="fcFlip()">${escapeHtml(fcFlippedState? card.a : card.q)}</div>
+    <div class="fc-progress">card ${fcIndex+1} of ${fcOrder.length} — tap to flip</div>`;
+}
+function renderFlashcards(newlyAdded){
+  if(!fcOrder.length || newlyAdded){ fcShuffle(); } else { renderFcStage(); }
+}
+
+// ---------- MEMORY GAME ----------
+const memoryEmojis = ['🔧','⚡','🚗','📐','🔋','🛠️','📊','🧭'];
+let memState = { tiles:[], flipped:[], matched:[], busy:false };
+function startMemoryGame(){
+  const pairs = [...memoryEmojis, ...memoryEmojis];
+  for(let i=pairs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pairs[i],pairs[j]]=[pairs[j],pairs[i]]; }
+  memState = { tiles:pairs, flipped:[], matched:[], busy:false };
+  document.getElementById('memoryStatus').textContent = 'Match the pairs.';
+  renderMemory();
+}
+function renderMemory(){
+  const grid = document.getElementById('memoryGrid');
+  grid.innerHTML = memState.tiles.map((emoji,i)=>{
+    const shown = memState.flipped.includes(i) || memState.matched.includes(i);
+    const cls = memState.matched.includes(i) ? 'matched' : (memState.flipped.includes(i) ? 'flipped' : '');
+    return `<div class="mem-tile ${cls}" onclick="memFlip(${i})">${shown? emoji : ''}</div>`;
+  }).join('');
+}
+function memFlip(i){
+  if(memState.busy || memState.flipped.includes(i) || memState.matched.includes(i)) return;
+  memState.flipped.push(i);
+  renderMemory();
+  if(memState.flipped.length===2){
+    memState.busy = true;
+    const [a,b] = memState.flipped;
+    if(memState.tiles[a]===memState.tiles[b]){
+      memState.matched.push(a,b);
+      memState.flipped = [];
+      memState.busy = false;
+      renderMemory();
+      if(memState.matched.length===memState.tiles.length){
+        document.getElementById('memoryStatus').textContent = 'Cleared it 🎉 — new game to go again.';
+      }
+    } else {
+      setTimeout(()=>{ memState.flipped = []; memState.busy = false; renderMemory(); }, 700);
+    }
+  }
+}
+
 function renderAll(){
   renderSnapshot(); renderTasks(); renderHistory(); renderProjects(); renderFinance(); renderGoals(); renderHabits(); renderIdeas();
+  renderShopping(); renderVision(); renderFlashcards(false);
 }
 
 // ---------- init ----------
@@ -840,6 +1151,8 @@ loadFinanceFields();
 renderAll();
 const savedClientId = localStorage.getItem('lifeos_gcid');
 if(savedClientId) document.getElementById('gClientId').value = savedClientId;
+if(savedClientId) attemptSilentConnect();
+startMemoryGame();
 </script>
 </body>
 </html>
