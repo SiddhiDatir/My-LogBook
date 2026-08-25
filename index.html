@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LOGBOOK — Personal Ops</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -154,12 +154,25 @@
           <input type="number" id="spendInput" placeholder="0">
           <label>Saved today (₹)</label>
           <input type="number" id="saveInput" placeholder="0">
+          <label>Sleep last night (hours)</label>
+          <input type="number" id="sleepInput" step="0.5" placeholder="e.g. 7">
           <label>Mood / energy (1–5)</label>
           <input type="number" id="moodInput" min="1" max="5" placeholder="3">
           <label>Notes — what happened, what you learned, anything on your mind</label>
           <textarea id="notesInput" placeholder="Free write..."></textarea>
           <div style="margin-top:12px;"><button onclick="saveToday()">Save today's entry</button></div>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Study sessions — today</h3>
+        <div class="row">
+          <input type="text" id="studyTopic" placeholder="What did you study?">
+          <input type="number" id="studyMinutes" placeholder="Minutes" style="flex:0 0 100px;">
+          <button style="flex:0 0 auto" onclick="addStudySession()">Log</button>
+        </div>
+        <ul class="quicklist" id="studyList"></ul>
+        <div style="font-size:12px;color:var(--muted); margin-top:6px;" id="studyTotal"></div>
       </div>
 
       <div class="card" style="margin-top:14px;">
@@ -361,9 +374,20 @@
     <!-- PLAY -->
     <div class="view" id="view-play">
       <h2 class="title">Play</h2>
-      <p class="lede">A break, or a way to actually retain what you're learning.</p>
+      <p class="lede">Pick a game — nothing repeats until you've been through the whole set.</p>
 
-      <div class="card" style="margin-bottom:14px;">
+      <div class="grid cols-3" id="gamePickerRow">
+        <div class="card game-pick-btn" data-game="flashcards" onclick="pickGame('flashcards')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🗂️</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Flashcards</div></div>
+        <div class="card game-pick-btn" data-game="memory" onclick="pickGame('memory')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🧠</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Memory Match</div></div>
+        <div class="card game-pick-btn" data-game="quiz" onclick="pickGame('quiz')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">❓</div><div style="margin-top:6px; font-weight:600; font-size:13px;">GK Quiz</div></div>
+        <div class="card game-pick-btn" data-game="scramble" onclick="pickGame('scramble')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🔤</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Word Scramble</div></div>
+        <div class="card game-pick-btn" data-game="math" onclick="pickGame('math')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">➗</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Quick Math</div></div>
+      </div>
+      <div class="row" id="gameBackRow" style="display:none; margin-bottom:14px;">
+        <button class="ghost" style="flex:0 0 auto" onclick="backToGames()">← All games</button>
+      </div>
+
+      <div class="card" id="panel-flashcards" style="display:none; margin-bottom:14px;">
         <h3>Flashcards — quiz yourself on whatever you're learning</h3>
         <div class="row" style="margin-bottom:10px;">
           <input type="text" id="fcQ" placeholder="Question / term">
@@ -380,19 +404,47 @@
         </div>
       </div>
 
-      <div class="card">
-        <h3>Memory match — 2 minute reset</h3>
+      <div class="card" id="panel-memory" style="display:none;">
+        <h3>Memory match — 10 themes, pick one or let it surprise you</h3>
+        <div class="row" style="margin-bottom:10px;">
+          <select id="memThemeSelect" onchange="startMemoryGame(this.value)">
+            <option value="surprise">Surprise me</option>
+            <option value="Space">Space</option>
+            <option value="Garage">Garage</option>
+            <option value="Nature">Nature</option>
+            <option value="Animals">Animals</option>
+            <option value="Food">Food</option>
+            <option value="Weather">Weather</option>
+            <option value="Music">Music</option>
+            <option value="Travel">Travel</option>
+            <option value="Sports">Sports</option>
+            <option value="Office">Office</option>
+          </select>
+        </div>
         <div id="memoryStatus" style="font-size:12px;color:var(--muted); margin-bottom:10px;">Match the pairs.</div>
         <div class="memory-grid" id="memoryGrid"></div>
-        <div style="margin-top:12px;"><button class="ghost" onclick="startMemoryGame()">New game</button></div>
+        <div style="margin-top:12px;"><button class="ghost" onclick="startMemoryGame(document.getElementById('memThemeSelect').value)">New game</button></div>
       </div>
 
-      <div class="card" style="margin-top:14px;">
+      <div class="card" id="panel-quiz" style="display:none;">
         <h3>General knowledge quiz</h3>
         <div id="quizStage" style="text-align:center; padding:16px 6px;"></div>
         <div class="fc-progress" id="quizScore" style="text-align:center;"></div>
         <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startQuiz()">New round</button></div>
       </div>
+
+      <div class="card" id="panel-scramble" style="display:none;">
+        <h3>Word scramble</h3>
+        <div id="scrambleStage" style="text-align:center; padding:16px 6px;"></div>
+        <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startScramble()">Skip word</button></div>
+      </div>
+
+      <div class="card" id="panel-math" style="display:none;">
+        <h3>Quick math</h3>
+        <div id="mathStage" style="text-align:center; padding:16px 6px;"></div>
+        <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startQuickMath()">New round</button></div>
+      </div>
+
       <div class="flow-next" onclick="flowAdvance('play')" data-flow="play"><span>Ideas</span><div class="flow-arrow">↓</div></div>
     </div>
 
@@ -417,10 +469,12 @@
 <div class="mascot-wrap">
   <div class="bubble" id="mascotBubble"></div>
   <div class="mascot" id="mascot" onclick="mascotPoke()">
+    <div class="m-tail"></div>
     <div class="m-ear l"></div>
     <div class="m-ear r"></div>
     <div class="m-face">
       <div class="m-cheek"></div>
+      <div class="m-nose"></div>
       <div class="m-eye l"></div>
       <div class="m-eye r"></div>
       <div class="m-mouth"></div>
@@ -432,6 +486,6 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

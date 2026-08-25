@@ -21,6 +21,7 @@ function load(){
     vision: [],            // {id, text, img}
     flashcards: [],        // {id, q, a}
     officeTasks: [],       // {id, text, domain, date, done}
+    studySessions: [],     // {id, topic, minutes, date}
     settings: {reminderTime:null, reminderEnabled:false, lastNotified:null}
   };
 }
@@ -30,6 +31,7 @@ if(!DATA.shopping) DATA.shopping = [];
 if(!DATA.vision) DATA.vision = [];
 if(!DATA.flashcards) DATA.flashcards = [];
 if(!DATA.officeTasks) DATA.officeTasks = [];
+if(!DATA.studySessions) DATA.studySessions = [];
 let driveSaveTimer=null, tokenClient=null, accessToken=null;
 function persist(){
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
@@ -84,6 +86,7 @@ async function driveLoad(){
         if(!remote.vision) remote.vision = [];
         if(!remote.flashcards) remote.flashcards = [];
         if(!remote.officeTasks) remote.officeTasks = [];
+        if(!remote.studySessions) remote.studySessions = [];
         DATA = remote;
         localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
         renderAll(); loadTodayFields(); loadFinanceFields();
@@ -167,6 +170,19 @@ function mascotPoke(){
   mascotReact('happy', pokeLines[Math.floor(Math.random()*pokeLines.length)]);
 }
 
+// ---------- mascot wandering ----------
+function mascotWander(){
+  const wrap = document.querySelector('.mascot-wrap');
+  const cat = document.getElementById('mascot');
+  if(!wrap || !cat) return;
+  const maxRight = Math.max(20, window.innerWidth - 100);
+  const newRight = Math.floor(Math.random()*maxRight);
+  cat.classList.add('walking');
+  wrap.style.right = newRight+'px';
+  setTimeout(()=>{ cat.classList.remove('walking'); }, 3500);
+}
+setInterval(mascotWander, 14000);
+
 // ---------- nav ----------
 document.querySelectorAll('.tab').forEach(tab=>{
   tab.addEventListener('click', ()=>{
@@ -223,22 +239,7 @@ document.addEventListener('click', (e)=>{
   setTimeout(()=>ripple.remove(), 550);
 });
 
-// ---------- card tilt toward cursor ----------
-document.addEventListener('mousemove', (e)=>{
-  const card = e.target.closest('.card');
-  document.querySelectorAll('.card.tilting').forEach(c=>{
-    if(c!==card){ c.style.transform=''; c.classList.remove('tilting'); }
-  });
-  if(!card) return;
-  const r = card.getBoundingClientRect();
-  const px = (e.clientX - r.left)/r.width - 0.5;
-  const py = (e.clientY - r.top)/r.height - 0.5;
-  card.classList.add('tilting');
-  card.style.transform = `perspective(700px) rotateX(${(-py*4).toFixed(2)}deg) rotateY(${(px*4).toFixed(2)}deg) translateY(-2px)`;
-});
-document.addEventListener('mouseleave', (e)=>{
-  document.querySelectorAll('.card.tilting').forEach(c=>{ c.style.transform=''; c.classList.remove('tilting'); });
-}, true);
+// (card tilt is now pure CSS — see .card:hover in style.css — removed the mousemove tracking that was tanking performance)
 
 // ---------- confetti burst ----------
 function confettiBurst(){
@@ -319,6 +320,7 @@ function saveToday(){
   DATA.logs[d] = {
     spend: parseFloat(document.getElementById('spendInput').value)||0,
     save: parseFloat(document.getElementById('saveInput').value)||0,
+    sleep: parseFloat(document.getElementById('sleepInput').value)||null,
     mood: parseInt(document.getElementById('moodInput').value)||null,
     notes: document.getElementById('notesInput').value||''
   };
@@ -334,6 +336,7 @@ function loadTodayFields(){
   if(l){
     document.getElementById('spendInput').value = l.spend || '';
     document.getElementById('saveInput').value = l.save || '';
+    document.getElementById('sleepInput').value = l.sleep || '';
     document.getElementById('moodInput').value = l.mood || '';
     document.getElementById('notesInput').value = l.notes || '';
   }
@@ -728,16 +731,34 @@ function renderFlashcards(newlyAdded){
 }
 
 // ---------- MEMORY GAME ----------
-const memoryEmojiPool = ['🔧','⚡','🚗','📐','🔋','🛠️','📊','🧭','🚀','🪐','⭐','🌙','🔭','🧲','💡','🎯','🧪','⚙️','📡','🛰️'];
+const memoryThemes = {
+  "Space":     ['🚀','🪐','⭐','🌙','🔭','🛰️','☄️','🌌'],
+  "Garage":    ['🔧','⚡','🚗','🔋','🛠️','⚙️','🧲','📐'],
+  "Nature":    ['🌲','🌊','🌻','🍃','🌵','🌈','🍄','🌸'],
+  "Animals":   ['🐱','🐶','🦊','🐼','🐸','🐧','🦁','🐢'],
+  "Food":      ['🍕','🍩','🍎','🍜','🍇','🍰','🍓','☕'],
+  "Weather":   ['☀️','🌧️','⛈️','❄️','🌪️','🌤️','🌫️','🌊'],
+  "Music":     ['🎵','🎸','🥁','🎹','🎤','🎧','🎷','🎻'],
+  "Travel":    ['✈️','🗺️','🧳','🚆','🏔️','🏖️','🚌','🗽'],
+  "Sports":    ['⚽','🏀','🏏','🎾','🏓','🏸','🥊','🏆'],
+  "Office":    ['📎','📌','🖊️','📊','📁','💻','📅','🗂️']
+};
 let memState = { tiles:[], flipped:[], matched:[], busy:false };
-function startMemoryGame(){
-  const shuffledPool = [...memoryEmojiPool];
-  for(let i=shuffledPool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffledPool[i],shuffledPool[j]]=[shuffledPool[j],shuffledPool[i]]; }
-  const chosen = shuffledPool.slice(0,8);
+let lastMemTheme = null;
+function startMemoryGame(themeName){
+  const names = Object.keys(memoryThemes);
+  if(!themeName || themeName==='surprise'){
+    const pool = names.filter(n=>n!==lastMemTheme);
+    themeName = pool[Math.floor(Math.random()*pool.length)];
+  }
+  lastMemTheme = themeName;
+  const sel = document.getElementById('memThemeSelect');
+  if(sel) sel.value = themeName;
+  const chosen = memoryThemes[themeName];
   const pairs = [...chosen, ...chosen];
   for(let i=pairs.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pairs[i],pairs[j]]=[pairs[j],pairs[i]]; }
   memState = { tiles:pairs, flipped:[], matched:[], busy:false };
-  document.getElementById('memoryStatus').textContent = 'Match the pairs.';
+  document.getElementById('memoryStatus').textContent = `Match the pairs — ${themeName} set.`;
   renderMemory();
 }
 function renderMemory(){
@@ -826,6 +847,30 @@ function renderOffice(){
   }).join('') || '<div class="empty">Nothing logged yet.</div>';
 }
 
+// ---------- study sessions ----------
+function addStudySession(){
+  const topic = document.getElementById('studyTopic').value.trim();
+  const mins = parseInt(document.getElementById('studyMinutes').value);
+  if(!topic || !mins) return;
+  DATA.studySessions.push({id:uid(), topic, minutes:mins, date:todayStr()});
+  document.getElementById('studyTopic').value=''; document.getElementById('studyMinutes').value='';
+  persist(); renderStudy();
+  mascotReact('happy', 'Nice, logged that study time.');
+}
+function delStudy(id){ DATA.studySessions = DATA.studySessions.filter(x=>x.id!==id); persist(); renderStudy(); }
+function renderStudy(){
+  const d = todayStr();
+  const todays = DATA.studySessions.filter(s=>s.date===d);
+  const list = document.getElementById('studyList');
+  if(list) list.innerHTML = todays.map(s=>`
+    <li><span class="txt">${escapeHtml(s.topic)}</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono);">${s.minutes}m</span>
+    <span class="del" onclick="delStudy(${s.id})">✕</span></li>`).join('');
+  const total = todays.reduce((sum,s)=>sum+s.minutes,0);
+  const totalEl = document.getElementById('studyTotal');
+  if(totalEl) totalEl.textContent = total>0 ? `Total today: ${total} minutes` : '';
+}
+
 // ---------- notes reading view (pulls project notes) ----------
 function renderNotes(){
   const withNotes = DATA.projects.filter(p=>p.notes && p.notes.trim());
@@ -877,11 +922,13 @@ const quizBank = [
   {q:"Which Indian river is considered the holiest?", opts:["Yamuna","Ganga","Godavari","Narmada"], a:1},
   {q:"What is the capital of Canada?", opts:["Toronto","Vancouver","Ottawa","Montreal"], a:2}
 ];
-let quizOrder = [], quizIndex = 0, quizScore = 0, quizAnswered = false;
+let quizOrder = [], quizIndex = 0, quizScore = 0, quizAnswered = false, quizUsed = new Set();
 function startQuiz(){
-  quizOrder = quizBank.map((_,i)=>i);
-  for(let i=quizOrder.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [quizOrder[i],quizOrder[j]]=[quizOrder[j],quizOrder[i]]; }
-  quizOrder = quizOrder.slice(0,8);
+  let available = quizBank.map((_,i)=>i).filter(i=>!quizUsed.has(i));
+  if(available.length < 8){ quizUsed = new Set(); available = quizBank.map((_,i)=>i); }
+  for(let i=available.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [available[i],available[j]]=[available[j],available[i]]; }
+  quizOrder = available.slice(0,8);
+  quizOrder.forEach(i=>quizUsed.add(i));
   quizIndex = 0; quizScore = 0; quizAnswered = false;
   renderQuizStage();
 }
@@ -922,6 +969,110 @@ const flowOrder = {
   shopping:'projects', projects:'notes', notes:'finance', finance:'goals',
   goals:'habits', habits:'play', play:'ideas', ideas:'history', history:'vision'
 };
+// ---------- word scramble ----------
+const wordBank = ["SENSOR","BRAKE","CIRCUIT","VOLTAGE","MODULE","MIRROR","BATTERY","STEERING","BUMPER","THROTTLE",
+  "GARDEN","SUNSET","PENCIL","OCEAN","MARKET","JOURNEY","PLANET","WINDOW","BRIDGE","HARVEST",
+  "COMPASS","LANTERN","MEADOW","GRANITE","VELVET","ORCHID","CANYON","GLACIER","FALCON","EMBER"];
+let scrambleUsed = new Set(), scrambleWord = '', scrambleAnswer = '';
+function scrambleLetters(word){
+  const arr = word.split('');
+  let s;
+  do{
+    for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    s = arr.join('');
+  } while(s===word && word.length>1);
+  return s;
+}
+function startScramble(){
+  let available = wordBank.map((_,i)=>i).filter(i=>!scrambleUsed.has(i));
+  if(!available.length){ scrambleUsed = new Set(); available = wordBank.map((_,i)=>i); }
+  const idx = available[Math.floor(Math.random()*available.length)];
+  scrambleUsed.add(idx);
+  scrambleAnswer = wordBank[idx];
+  scrambleWord = scrambleLetters(scrambleAnswer);
+  const stage = document.getElementById('scrambleStage');
+  stage.innerHTML = `
+    <div style="font-size:26px; font-weight:700; letter-spacing:4px; font-family:var(--mono); margin-bottom:14px;">${scrambleWord}</div>
+    <input type="text" id="scrambleInput" placeholder="Type your answer" style="max-width:220px; margin:0 auto; display:block; text-align:center;" onkeydown="if(event.key==='Enter') checkScramble()">
+    <div id="scrambleFeedback" style="margin-top:8px; font-size:12.5px; min-height:18px;"></div>
+    <div style="margin-top:10px;"><button class="ghost" onclick="checkScramble()">Check</button></div>
+  `;
+  document.getElementById('scrambleInput').focus();
+}
+function checkScramble(){
+  const inp = document.getElementById('scrambleInput');
+  const fb = document.getElementById('scrambleFeedback');
+  if(inp.value.trim().toUpperCase()===scrambleAnswer){
+    fb.textContent = 'Correct! ' + scrambleAnswer;
+    fb.style.color = 'var(--teal)';
+    mascotReact('cheer', 'Nice!'); confettiBurst();
+    setTimeout(startScramble, 1100);
+  } else {
+    fb.textContent = 'Not quite — try again';
+    fb.style.color = 'var(--red)';
+    mascotReact('worried', 'Close, try again.');
+  }
+}
+
+// ---------- quick math ----------
+let mathScore = 0, mathRound = 0, mathAnswer = 0;
+function startQuickMath(){ mathScore = 0; mathRound = 0; nextMathQuestion(); }
+function nextMathQuestion(){
+  if(mathRound >= 8){
+    document.getElementById('mathStage').innerHTML = `<div style="font-size:16px;font-weight:700;">Round done — ${mathScore}/8 correct</div>`;
+    if(mathScore===8){ mascotReact('cheer','Perfect round!'); confettiBurst(); }
+    return;
+  }
+  mathRound++;
+  const a = Math.floor(Math.random()*40)+1, b = Math.floor(Math.random()*40)+1;
+  const ops = ['+','-','×'];
+  const op = ops[Math.floor(Math.random()*ops.length)];
+  mathAnswer = op==='+' ? a+b : op==='-' ? a-b : a*(Math.floor(Math.random()*10)+1);
+  const displayB = op==='×' ? (mathAnswer/a) : b;
+  const stage = document.getElementById('mathStage');
+  stage.innerHTML = `
+    <div style="font-size:22px; font-weight:700; margin-bottom:14px;">${a} ${op} ${displayB} = ?</div>
+    <input type="number" id="mathInput" placeholder="Answer" style="max-width:160px; margin:0 auto; display:block; text-align:center;" onkeydown="if(event.key==='Enter') checkMath()">
+    <div id="mathFeedback" style="margin-top:8px; font-size:12.5px; min-height:18px;"></div>
+    <div style="margin-top:10px;"><button class="ghost" onclick="checkMath()">Check</button></div>
+    <div class="fc-progress">question ${mathRound} of 8 · score ${mathScore}</div>
+  `;
+  document.getElementById('mathInput').focus();
+}
+function checkMath(){
+  const inp = document.getElementById('mathInput');
+  const fb = document.getElementById('mathFeedback');
+  if(parseInt(inp.value,10)===mathAnswer){
+    fb.textContent = 'Correct!'; fb.style.color='var(--teal)'; mathScore++;
+    mascotReact('happy','Correct!');
+  } else {
+    fb.textContent = `Answer was ${mathAnswer}`; fb.style.color='var(--red)';
+    mascotReact('worried','Not quite.');
+  }
+  setTimeout(nextMathQuestion, 800);
+}
+
+// ---------- game picker ----------
+const gamePanels = ['flashcards','memory','quiz','scramble','math'];
+function pickGame(name){
+  gamePanels.forEach(g=>{
+    const panel = document.getElementById('panel-'+g);
+    if(panel) panel.style.display = (g===name) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.game-pick-btn').forEach(b=>b.classList.toggle('active', b.dataset.game===name));
+  document.getElementById('gamePickerRow').style.display = 'none';
+  document.getElementById('gameBackRow').style.display = 'flex';
+  if(name==='scramble') startScramble();
+  if(name==='math') startQuickMath();
+  if(name==='memory' && !memState.tiles.length) startMemoryGame();
+  if(name==='quiz' && !quizOrder.length) startQuiz();
+}
+function backToGames(){
+  gamePanels.forEach(g=>{ const p=document.getElementById('panel-'+g); if(p) p.style.display='none'; });
+  document.getElementById('gamePickerRow').style.display = 'grid';
+  document.getElementById('gameBackRow').style.display = 'none';
+}
+
 function flowAdvance(fromView){
   const next = flowOrder[fromView];
   if(!next) return;
@@ -956,7 +1107,7 @@ window.addEventListener('wheel', (e)=>{
 function renderAll(){
   renderSnapshot(); renderTasks(); renderHistory(); renderProjects(); renderFinance(); renderGoals(); renderHabits(); renderIdeas();
   renderShopping(); renderVision(); renderFlashcards(false);
-  renderOffice(); renderNotes();
+  renderOffice(); renderNotes(); renderStudy();
 }
 
 // ---------- init ----------
@@ -967,6 +1118,6 @@ animateTitle(document.querySelector('.view.active .title'));
 const savedClientId = localStorage.getItem('lifeos_gcid');
 if(savedClientId) document.getElementById('gClientId').value = savedClientId;
 if(savedClientId) attemptSilentConnect();
-startMemoryGame();
-startQuiz();
 initFlowNext();
+const _wrap = document.querySelector('.mascot-wrap');
+if(_wrap) _wrap.style.right = '18px';
