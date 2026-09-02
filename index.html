@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOGBOOK — Personal Ops</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="stylesheet" href="style.css?v=15">
+</head>
+<body>
+
+<div class="shell">
+  <div class="hamburger" id="hamburger" onclick="toggleNav()"><span></span><span></span><span></span></div>
+  <div class="nav-backdrop" id="navBackdrop" onclick="closeNav()"></div>
+  <nav class="rail" id="navRail">
+    <div class="brand">
+      <div class="mark">LOGBOOK</div>
+      <h1>Personal Ops</h1>
+      <div class="sub">works offline · saves to this browser</div>
+      <div class="sub" id="buildStamp" style="margin-top:4px; opacity:.6;">build v16</div>
+    </div>
+    <div class="tab active" data-view="snapshot"><span class="n">01</span> Snapshot</div>
+    <div class="tab" data-view="habits"><span class="n">02</span> Habits</div>
+    <div class="tab" data-view="tasks"><span class="n">03</span> Tasks</div>
+    <div class="tab" data-view="goals"><span class="n">04</span> Goals</div>
+    <div class="tab" data-view="office"><span class="n">05</span> Office log</div>
+    <div class="tab" data-view="shopping"><span class="n">06</span> Shopping</div>
+    <div class="tab" data-view="history"><span class="n">07</span> Log Book</div>
+    <div class="tab" data-view="projects"><span class="n">08</span> Projects</div>
+    <div class="tab" data-view="notes"><span class="n">09</span> Notes</div>
+    <div class="tab" data-view="finance"><span class="n">10</span> Finance</div>
+    <div class="tab" data-view="play"><span class="n">11</span> Play</div>
+    <div class="tab" data-view="ideas"><span class="n">12</span> Ideas</div>
+  </nav>
+
+  <main>
+
+    <!-- SNAPSHOT -->
+    <div class="view active" id="view-snapshot">
+      <h2 class="title">Snapshot</h2>
+      <p class="lede" id="snapDate">—</p>
+
+      <div class="card" style="margin-bottom:14px;">
+        <h3>Cloud sync — Google Drive</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">
+          Paste your Google Client ID once, connect, and every save here also saves to a private file in your Drive. Open this same hosted page on any device and connect to pull it back down.
+        </p>
+        <div class="row">
+          <input type="text" id="gClientId" placeholder="Google OAuth Client ID">
+          <button style="flex:0 0 auto" onclick="connectDrive()">Connect Drive</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted); margin-top:6px;" id="driveStatus">Not connected — data is only saving locally right now.</div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">Open tasks</h3>
+          <div style="font-family:var(--mono); font-size:38px; font-weight:700; color:var(--teal);" id="snapOpenCount">0</div>
+          <div style="font-size:11px; color:var(--muted);">across Office, Shopping, Personal</div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">Habits at risk</h3>
+          <div style="font-family:var(--mono); font-size:38px; font-weight:700; color:var(--amber);" id="snapHabitRisk">0</div>
+          <div style="font-size:11px; color:var(--muted);">missed their last due day</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Today's habits</h3>
+        <ul class="quicklist" id="snapHabitsToday"></ul>
+        <div class="empty" id="snapHabitsTodayEmpty" style="display:none;">Nothing due today — nice.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Daily routine — a same-list-every-day check, doesn't get saved</h3>
+        <ul class="quicklist" id="routineList"></ul>
+        <div class="row" style="margin-top:8px;">
+          <input type="text" id="routineInput" placeholder="Add a routine item (this session only)">
+          <button class="ghost" style="flex:0 0 auto" onclick="addRoutineItem()">Add</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Headlines — India & World</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">
+          Opens live results in a new tab — this stays current without needing an API key baked into the app.
+        </p>
+        <div class="row" style="flex-wrap:wrap;">
+          <a href="https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGRqTVhZU0FtVnVHZ0pKVGlnQVAB?hl=en-IN&gl=IN" target="_blank" style="flex:0 0 auto;"><button class="ghost">India headlines ↗</button></a>
+          <a href="https://news.google.com/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGVjTUE9U0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US" target="_blank" style="flex:0 0 auto;"><button class="ghost">World headlines ↗</button></a>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Gentle daily nudge</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">
+          Requests a one-time-per-day browser notification while this app is open in a tab. It cannot wake your phone or run when the tab is closed — that needs a hosted version or a native app, not a local file.
+        </p>
+        <div class="row">
+          <input type="text" id="reminderTime" placeholder="HH:MM, e.g. 20:00" style="flex:0 0 140px;">
+          <button style="flex:0 0 auto" onclick="enableReminder()">Enable nudge</button>
+          <span id="reminderStatus" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('snapshot')" data-flow="snapshot"><span>Habits</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- HABITS -->
+    <div class="view" id="view-habits">
+      <h2 class="title">Habits</h2>
+      <p class="lede">Recurring things that never really finish — streak-based, grouped by category.</p>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="row">
+          <input type="text" id="habitInput" placeholder="e.g. Morning exercise, Evening study">
+          <select id="habitCategory" style="flex:0 0 130px;">
+            <option>Health</option><option>Learning</option><option>Discipline</option><option>General</option>
+          </select>
+          <select id="habitFrequency" style="flex:0 0 130px;">
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekends">Weekends</option>
+          </select>
+          <button style="flex:0 0 auto" onclick="addHabit()">Add</button>
+        </div>
+      </div>
+      <div id="habitsByCategory"></div>
+      <div class="empty" id="habitsEmpty" style="display:none;">No habits yet — add your first above.</div>
+      <div class="flow-next" onclick="flowAdvance('habits')" data-flow="habits"><span>Tasks</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="view" id="view-tasks">
+      <h2 class="title">Tasks</h2>
+      <p class="lede">One-off, closable things — grouped by status, filterable by category.</p>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="row">
+          <input type="text" id="taskTitleInput" placeholder="e.g. Submit expense report">
+          <input type="text" id="taskCategoryInput" placeholder="Category (Personal, Project...)" style="flex:0 0 170px;">
+          <input type="date" id="taskDueInput" style="flex:0 0 150px;">
+          <button style="flex:0 0 auto" onclick="addUnifiedTask()">Add</button>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:14px;">
+        <label style="flex:0 0 auto; align-self:center; margin:0; font-size:12px; color:var(--muted);">Filter by category</label>
+        <select id="taskCategoryFilter" onchange="renderTasksView()" style="flex:0 0 200px;">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <div class="card" style="margin-bottom:14px;">
+        <h3>Open</h3>
+        <ul class="quicklist" id="tasksOpenList"></ul>
+        <div class="empty" id="tasksOpenEmpty" style="display:none;">Nothing open.</div>
+      </div>
+      <div class="card" style="margin-bottom:14px;">
+        <h3>In progress</h3>
+        <ul class="quicklist" id="tasksProgressList"></ul>
+        <div class="empty" id="tasksProgressEmpty" style="display:none;">Nothing in progress.</div>
+      </div>
+      <div class="card">
+        <h3>Closed</h3>
+        <ul class="quicklist" id="tasksClosedList"></ul>
+        <div class="empty" id="tasksClosedEmpty" style="display:none;">Nothing closed yet.</div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('tasks')" data-flow="tasks"><span>Goals</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+
+    <!-- TODAY -->
+    <!-- OFFICE -->
+    <div class="view" id="view-office">
+      <h2 class="title">Office</h2>
+      <p class="lede">Work only — tasks, due dates, and a proper record of what did or didn't get done.</p>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="row">
+          <input type="text" id="officeTaskInput" placeholder="e.g. Mapped AEBS gap for Urbania vs Sprinter">
+          <select id="officeKind" style="flex:0 0 110px;"><option value="task">Task</option><option value="learning">Learning</option></select>
+          <select id="officeDomain" style="flex:0 0 110px;">
+            <option>ADAS</option><option>BCM</option><option>HVAC</option><option>TPMS</option><option>Other</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <label style="flex:0 0 auto; margin:0; align-self:center; font-size:12px; color:var(--muted);">Due</label>
+          <input type="date" id="officeDueDate" style="flex:0 0 160px;">
+          <button style="flex:0 0 auto" onclick="addOfficeTask()">Log it</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:14px;">
+        <h3>Still open from earlier — not lost, not auto-carried</h3>
+        <ul class="quicklist" id="officeOpenOlder"></ul>
+        <div class="empty" id="officeOpenOlderEmpty" style="display:none;">Nothing open from previous days.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>By domain — today</h3>
+        <div id="officeByDomain"></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h3>Office log — today</h3>
+        <ul class="quicklist" id="officeList"></ul>
+        <div class="empty" id="officeEmpty" style="display:none;">Nothing logged yet today.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h3>Export — for month-end review</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">CSV for your own records (opens in Excel/Sheets). Report for showing someone — clean, readable, save as PDF.</p>
+        <div class="row">
+          <input type="date" id="exportFrom" style="flex:0 0 auto;">
+          <span style="align-self:center; color:var(--muted); font-size:12px;">to</span>
+          <input type="date" id="exportTo" style="flex:0 0 auto;">
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <button class="ghost" style="flex:0 0 auto" onclick="exportOfficeCsv()">Download CSV</button>
+          <button style="flex:0 0 auto" onclick="showOfficeReport()">Preview report → Save as PDF</button>
+        </div>
+      </div>
+
+      <div class="flow-next" onclick="flowAdvance('office')" data-flow="office"><span>Shopping</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <div class="view" id="view-shopping">
+      <h2 class="title">Shopping</h2>
+      <p class="lede">Groceries, household, clothes — whatever's on the list before you head out.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <div class="row" style="margin-bottom:6px;">
+            <input type="text" id="shopInput" placeholder="e.g. Onions, detergent, socks...">
+            <select id="shopCat" style="flex:0 0 130px;">
+              <option value="Groceries">Groceries</option>
+              <option value="Household">Household</option>
+              <option value="Clothes">Clothes</option>
+              <option value="Other">Other</option>
+            </select>
+            <button style="flex:0 0 auto" onclick="addShopItem()">Add</button>
+          </div>
+          <ul class="quicklist" id="shopList"></ul>
+          <div class="empty" id="shopEmpty" style="display:none;">Nothing on the list right now.</div>
+          <div style="margin-top:10px;"><button class="ghost" onclick="clearCheckedShop()">Clear checked</button></div>
+        </div>
+        <div class="card">
+          <h3>By category</h3>
+          <div id="shopByCat"></div>
+        </div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('shopping')" data-flow="shopping"><span>Projects</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="view" id="view-history">
+      <h2 class="title">Log Book</h2>
+      <p class="lede">Everything you've logged, most recent first.</p>
+      <div class="card">
+        <table id="historyTable">
+          <thead><tr><th>Date</th><th>Spend</th><th>Save</th><th>Mood</th><th>Notes</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div class="empty" id="historyEmpty" style="display:none;">No entries yet. Log today from the Today tab.</div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('history')" data-flow="history"><span>Back to Snapshot</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="view" id="view-projects">
+      <h2 class="title">Projects</h2>
+      <p class="lede">Work and personal, in one place. Status updates as things move.</p>
+      <div class="card">
+        <div class="row" style="margin-bottom:6px;">
+          <input type="text" id="projName" placeholder="Project / area name">
+          <select id="projCat" style="flex:0 0 130px;"><option value="work">Work</option><option value="personal">Personal</option></select>
+          <button style="flex:0 0 auto" onclick="addProject()">Add</button>
+        </div>
+        <div id="projectList"></div>
+        <div class="empty" id="projectEmpty" style="display:none;">No projects yet.</div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('projects')" data-flow="projects"><span>Notes</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="view" id="view-notes">
+      <h2 class="title">Notes</h2>
+      <p class="lede">Everything you've written under each project, gathered for a calm read.</p>
+      <div id="notesList"></div>
+      <div class="empty" id="notesEmpty" style="display:none;">No project notes yet — add some from the Projects tab.</div>
+      <div class="flow-next" onclick="flowAdvance('notes')" data-flow="notes"><span>Finance</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- FINANCE -->
+    <div class="view" id="view-finance">
+      <h2 class="title">Finance</h2>
+      <p class="lede">Set your baseline, then let daily entries build the picture.</p>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Monthly baseline</h3>
+          <label>Monthly income (₹)</label>
+          <input type="number" id="incomeInput" placeholder="0">
+          <label>Fixed monthly expenses (₹)</label>
+          <input type="number" id="fixedInput" placeholder="0">
+          <label>Savings target (%)</label>
+          <input type="number" id="targetInput" placeholder="20">
+          <div style="margin-top:12px;"><button onclick="saveFinance()">Save baseline</button></div>
+        </div>
+        <div class="card" style="text-align:center;">
+          <h3 style="text-align:left;">This month so far</h3>
+          <div class="ring" id="savingsRing"><span class="num" id="savingsPct">—</span><span class="lbl">saved</span></div>
+          <div class="stat-row">
+            <div><div class="streak" id="mSpend">₹0</div><div style="font-size:10px;color:var(--muted);">spent</div></div>
+            <div><div class="streak" id="mSave">₹0</div><div style="font-size:10px;color:var(--muted);">saved</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h3>Today's entry — spend, save, sleep, mood, notes</h3>
+        <div class="grid cols-2">
+          <div>
+            <label>Spent today (₹)</label>
+            <input type="number" id="spendInput" placeholder="0">
+            <label>Saved today (₹)</label>
+            <input type="number" id="saveInput" placeholder="0">
+            <label>Sleep last night (hours)</label>
+            <input type="number" id="sleepInput" step="0.5" placeholder="e.g. 7">
+          </div>
+          <div>
+            <label>Mood / energy (1–5)</label>
+            <input type="number" id="moodInput" min="1" max="5" placeholder="3">
+            <label>Notes</label>
+            <textarea id="notesInput" placeholder="Free write..."></textarea>
+          </div>
+        </div>
+        <div style="margin-top:12px;"><button onclick="saveToday()">Save today's entry</button></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h3>Study sessions — today</h3>
+        <div class="row">
+          <input type="text" id="studyTopic" placeholder="What did you study?">
+          <input type="number" id="studyMinutes" placeholder="Minutes" style="flex:0 0 100px;">
+          <button style="flex:0 0 auto" onclick="addStudySession()">Log</button>
+        </div>
+        <ul class="quicklist" id="studyList"></ul>
+        <div style="font-size:12px;color:var(--muted); margin-top:6px;" id="studyTotal"></div>
+      </div>
+      <div class="card" style="margin-top:14px;">
+        <h3>Last 14 days — spend vs save</h3>
+        <div id="financeBars"></div>
+        <div class="empty" id="financeEmpty" style="display:none;">Log daily entries to see the trend.</div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('finance')" data-flow="finance"><span>Goals</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="view" id="view-goals">
+      <h2 class="title">Goals</h2>
+      <p class="lede">The big picture — checked weekly or monthly, not daily. Goals plus your vision board, together.</p>
+      <div class="row" style="margin-bottom:14px;">
+        <input type="text" id="goalInput" placeholder="Add a goal...">
+        <select id="goalTerm" style="flex:0 0 130px;">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="yearly">Yearly</option>
+          <option value="lifelong">Lifelong / Dream</option>
+        </select>
+        <button style="flex:0 0 auto" onclick="addGoal()">Add</button>
+      </div>
+      <div class="goal-cols">
+        <div class="goal-col"><h4>Daily</h4><ul class="quicklist" id="goal-daily"></ul></div>
+        <div class="goal-col"><h4>Weekly</h4><ul class="quicklist" id="goal-weekly"></ul></div>
+        <div class="goal-col"><h4>Yearly</h4><ul class="quicklist" id="goal-yearly"></ul></div>
+        <div class="goal-col"><h4>Lifelong / Dream</h4><ul class="quicklist" id="goal-lifelong"></ul></div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <h3>Achievements — done goals land here</h3>
+        <ul class="quicklist" id="achieveList"></ul>
+        <div class="empty" id="achieveEmpty" style="display:none;">Check off a goal above and it'll show up here.</div>
+      </div>
+
+      <h3 style="margin-top:28px; font-size:16px;">Vision Board</h3>
+      <p class="lede" style="margin-top:2px;">Pin what you're working toward. Words, images, whatever pulls you forward.</p>
+      <div class="vision-banner" id="visionBanner" style="display:none;"></div>
+      <div class="card" style="margin-bottom:14px;">
+        <div class="grid cols-2">
+          <div>
+            <label>Text / quote / goal</label>
+            <input type="text" id="visionText" placeholder="e.g. Own place by 30, or a quote that hits">
+          </div>
+          <div>
+            <label>Image URL (optional)</label>
+            <input type="text" id="visionImg" placeholder="https://... (leave blank for a text card)">
+          </div>
+        </div>
+        <label style="margin-top:10px;">Or upload an image from your device</label>
+        <input type="file" id="visionFile" accept="image/*" style="padding:6px 0;">
+        <div style="font-size:11px;color:var(--muted); margin-top:4px;">Uploaded photos are resized and stored on this device (and your Drive if connected) — big photo libraries will use noticeable storage, so a handful of favorites works better than dozens.</div>
+        <div style="margin-top:10px;"><button onclick="addVisionItem()">Pin it</button></div>
+      </div>
+      <div class="vision-grid" id="visionGrid"></div>
+      <div class="empty" id="visionEmpty" style="display:none;">Board's empty — pin your first thing above.</div>
+
+      <h4 style="margin-top:26px; font-size:12px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Photo collage — every picture you've pinned</h4>
+      <div class="photo-collage" id="photoCollage"></div>
+      <div class="empty" id="photoCollageEmpty" style="display:none;">No photos pinned yet — upload one above and it'll show up here.</div>
+
+      <div class="flow-next" onclick="flowAdvance('goals')" data-flow="goals"><span>Office log</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- PLAY -->
+    <div class="view" id="view-play">
+      <h2 class="title">Play</h2>
+      <p class="lede">Pick a game — nothing repeats until you've been through the whole set.</p>
+
+      <div class="grid cols-3" id="gamePickerRow">
+        <div class="card game-pick-btn" data-game="flashcards" onclick="pickGame('flashcards')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🗂️</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Flashcards</div></div>
+        <div class="card game-pick-btn" data-game="memory" onclick="pickGame('memory')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🧠</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Memory Match</div></div>
+        <div class="card game-pick-btn" data-game="quiz" onclick="pickGame('quiz')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">❓</div><div style="margin-top:6px; font-weight:600; font-size:13px;">GK Quiz</div></div>
+        <div class="card game-pick-btn" data-game="scramble" onclick="pickGame('scramble')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">🔤</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Word Scramble</div></div>
+        <div class="card game-pick-btn" data-game="math" onclick="pickGame('math')" style="text-align:center; cursor:pointer;"><div style="font-size:26px;">➗</div><div style="margin-top:6px; font-weight:600; font-size:13px;">Quick Math</div></div>
+      </div>
+      <div class="row" id="gameBackRow" style="display:none; margin-bottom:14px;">
+        <button class="ghost" style="flex:0 0 auto" onclick="backToGames()">← All games</button>
+      </div>
+
+      <div class="card" id="panel-flashcards" style="display:none; margin-bottom:14px;">
+        <h3>Flashcards — quiz yourself on whatever you're learning</h3>
+        <div class="row" style="margin-bottom:10px;">
+          <input type="text" id="fcQ" placeholder="Question / term">
+          <input type="text" id="fcA" placeholder="Answer">
+          <button style="flex:0 0 auto" onclick="addFlashcard()">Add</button>
+        </div>
+        <div id="fcStage" style="text-align:center; padding:24px 10px;">
+          <div class="empty" id="fcEmptyMsg">Add a few cards above to start quizzing yourself.</div>
+        </div>
+        <div class="row" id="fcControls" style="display:none; justify-content:center;">
+          <button class="ghost" style="flex:0 0 auto" onclick="fcFlip()">Flip</button>
+          <button class="ghost" style="flex:0 0 auto" onclick="fcNext()">Next card</button>
+          <button class="ghost" style="flex:0 0 auto" onclick="fcShuffle()">Shuffle</button>
+        </div>
+      </div>
+
+      <div class="card" id="panel-memory" style="display:none;">
+        <h3>Memory match — 10 themes, pick one or let it surprise you</h3>
+        <div class="row" style="margin-bottom:10px;">
+          <select id="memThemeSelect" onchange="startMemoryGame(this.value)">
+            <option value="surprise">Surprise me</option>
+            <option value="Space">Space</option>
+            <option value="Garage">Garage</option>
+            <option value="Nature">Nature</option>
+            <option value="Animals">Animals</option>
+            <option value="Food">Food</option>
+            <option value="Weather">Weather</option>
+            <option value="Music">Music</option>
+            <option value="Travel">Travel</option>
+            <option value="Sports">Sports</option>
+            <option value="Office">Office</option>
+          </select>
+        </div>
+        <div id="memoryStatus" style="font-size:12px;color:var(--muted); margin-bottom:10px;">Match the pairs.</div>
+        <div class="memory-grid" id="memoryGrid"></div>
+        <div style="margin-top:12px;"><button class="ghost" onclick="startMemoryGame(document.getElementById('memThemeSelect').value)">New game</button></div>
+      </div>
+
+      <div class="card" id="panel-quiz" style="display:none;">
+        <h3>General knowledge quiz</h3>
+        <p style="font-size:12px;color:var(--muted); margin:0 0 10px 0;">Starts at Basics. Score well (7-8/8) and it steps up a level; score badly (0-2/8) and it steps back down — so it should always sit near where you actually are.</p>
+        <div id="quizStage" style="text-align:center; padding:16px 6px;"></div>
+        <div class="fc-progress" id="quizScore" style="text-align:center;"></div>
+        <div class="row" style="margin-top:10px; justify-content:center;">
+          <button class="ghost" style="flex:0 0 auto" onclick="startQuiz()">New round</button>
+          <button class="ghost" style="flex:0 0 auto" onclick="resetQuizLevel()">Reset to Basics</button>
+        </div>
+      </div>
+
+      <div class="card" id="panel-scramble" style="display:none;">
+        <h3>Word scramble</h3>
+        <div id="scrambleStage" style="text-align:center; padding:16px 6px;"></div>
+        <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startScramble()">Skip word</button></div>
+      </div>
+
+      <div class="card" id="panel-math" style="display:none;">
+        <h3>Quick math</h3>
+        <div id="mathStage" style="text-align:center; padding:16px 6px;"></div>
+        <div style="text-align:center; margin-top:10px;"><button class="ghost" onclick="startQuickMath()">New round</button></div>
+      </div>
+
+      <div class="flow-next" onclick="flowAdvance('play')" data-flow="play"><span>Ideas</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+    <!-- IDEAS -->
+    <div class="view" id="view-ideas">
+      <h2 class="title">Ideas</h2>
+      <p class="lede">Dump it here instead of a sticky note. Sort it out later.</p>
+      <div class="card">
+        <textarea id="ideaInput" placeholder="Whatever just came into your head..."></textarea>
+        <div style="margin-top:10px;"><button onclick="addIdea()">Capture</button></div>
+        <div id="ideaList" style="margin-top:14px;"></div>
+        <div class="empty" id="ideaEmpty" style="display:none;">Nothing captured yet.</div>
+      </div>
+      <div class="flow-next" onclick="flowAdvance('ideas')" data-flow="ideas"><span>Log Book</span><div class="flow-arrow">↓</div></div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast">Saved</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()">
+  <div class="lightbox-text" id="lightboxText"></div>
+  <div class="lightbox-close" onclick="closeLightbox()">✕</div>
+</div>
+
+<div id="printReport">
+  <div id="printReportInner"></div>
+  <div class="print-controls">
+    <button onclick="window.print()">Print / Save as PDF</button>
+    <button class="ghost" onclick="closeOfficeReport()">Close preview</button>
+  </div>
+</div>
+
+<div class="mascot-wrap">
+  <div class="bubble" id="mascotBubble"></div>
+  <div class="mascot" id="mascot" onclick="mascotPoke()">
+    <div class="m-tail"></div>
+    <div class="m-ear l"></div>
+    <div class="m-ear r"></div>
+    <div class="m-face">
+      <div class="m-cheek"></div>
+      <div class="m-nose"></div>
+      <div class="m-eye l"></div>
+      <div class="m-eye r"></div>
+      <div class="m-mouth"></div>
+      <div class="m-whisker l1"></div>
+      <div class="m-whisker l2"></div>
+      <div class="m-whisker r1"></div>
+      <div class="m-whisker r2"></div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=16"></script>
+</body>
+</html>
